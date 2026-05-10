@@ -350,6 +350,37 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
 </div>
 
 <!-- LISTINGS -->
+<section class="listings-sec" id="listings" style="padding-top:4rem;padding-bottom:5rem;padding-left:4rem;padding-right:4rem">
+  <div class="sec-header">
+    <div><div class="sec-label">Featured Listings</div><h2 class="sec-title">Current Availability</h2></div>
+    <a href="#listings" class="link-more">View all listings →</a>
+  </div>
+  <div class="listings-grid" id="listings-grid">
+    <!-- loaded from Supabase -->
+    <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4);font-size:0.78rem">Loading listings...</div>
+  </div>
+</section>
+
+<div class="gold-rule"></div>
+
+<!-- NEIGHBORHOODS -->
+<section class="hoods-sec" id="neighborhoods">
+  <div class="sec-header">
+    <div><div class="sec-label">Explore by Area</div><h2 class="sec-title">NYC Neighborhood Guides</h2>
+    <p class="sec-sub" style="margin-top:0.5rem">Not sure where to live? I can guide you to the right neighborhood.</p></div>
+  </div>
+  <div class="hoods-grid" id="hoods-grid">
+    <a href="#listings" class="hood-card" onclick="filterByHood('Upper West Side')"><div class="hood-name">Upper West Side</div><div class="hood-count">View available listings</div></a>
+    <a href="#listings" class="hood-card" onclick="filterByHood('Upper East Side')"><div class="hood-name">Upper East Side</div><div class="hood-count">View available listings</div></a>
+    <a href="#listings" class="hood-card" onclick="filterByHood('Midtown')"><div class="hood-name">Midtown</div><div class="hood-count">View available listings</div></a>
+    <a href="#listings" class="hood-card" onclick="filterByHood('West Village')"><div class="hood-name">West Village</div><div class="hood-count">View available listings</div></a>
+    <a href="#listings" class="hood-card" onclick="filterByHood('Williamsburg')"><div class="hood-name">Williamsburg</div><div class="hood-count">View available listings</div></a>
+    <a href="#listings" class="hood-card" onclick="filterByHood('Astoria, Queens')"><div class="hood-name">Astoria, Queens</div><div class="hood-count">View available listings</div></a>
+  </div>
+</section>
+
+<div class="gold-rule"></div>
+
 <!-- LANDLORD SECTION -->
 <section class="landlord-sec" id="landlords">
   <div>
@@ -372,35 +403,6 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
       </div>
     </div>
     <a href="#contact" class="landlord-cta">List Your Property</a>
-  </div>
-</section>
-
-<!-- LISTINGS -->
-<section class="listings-sec" id="listings" style="padding-top:4rem;padding-bottom:5rem;padding-left:4rem;padding-right:4rem">
-  <div class="sec-header">
-    <div><div class="sec-label">Featured Listings</div><h2 class="sec-title">Current Availability</h2></div>
-  </div>
-  <div class="listings-grid" id="listings-grid">
-    <!-- loaded from Supabase -->
-    <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4);font-size:0.78rem">Loading listings...</div>
-  </div>
-</section>
-
-<div class="gold-rule"></div>
-
-<!-- NEIGHBORHOODS -->
-<section class="hoods-sec" id="neighborhoods">
-  <div class="sec-header">
-    <div><div class="sec-label">Explore by Area</div><h2 class="sec-title">NYC Neighborhood Guides</h2>
-    <p class="sec-sub" style="margin-top:0.5rem">Not sure where to live? I can guide you to the right neighborhood.</p></div>
-  </div>
-  <div class="hoods-grid" id="hoods-grid">
-    <a href="#contact" class="hood-card"><div class="hood-name">Upper West Side</div><div class="hood-count">View available listings</div></a>
-    <a href="#contact" class="hood-card"><div class="hood-name">Upper East Side</div><div class="hood-count">View available listings</div></a>
-    <a href="#contact" class="hood-card"><div class="hood-name">Midtown</div><div class="hood-count">View available listings</div></a>
-    <a href="#contact" class="hood-card"><div class="hood-name">West Village</div><div class="hood-count">View available listings</div></a>
-    <a href="#contact" class="hood-card"><div class="hood-name">Williamsburg</div><div class="hood-count">View available listings</div></a>
-    <a href="#contact" class="hood-card"><div class="hood-name">Astoria, Queens</div><div class="hood-count">View available listings</div></a>
   </div>
 </section>
 
@@ -484,7 +486,7 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
 <script>
 const SUPA_URL='https://mzhqwrtgztuajgvjugqa.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16aHF3cnRnenR1YWpndmp1Z3FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDU5OTksImV4cCI6MjA5NDAyMTk5OX0.oThSHjs6tfs6pSh63HObYsQhzzcgKxy07R5TWinD26g';
-const supa=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+let supa=null;
 let LISTINGS=[];
 
 async function loadListings(){
@@ -521,7 +523,7 @@ function loadNeighborhoods(listings){
   live.forEach(l=>{counts[l.neighborhood]=(counts[l.neighborhood]||0)+1;});
   const el=document.getElementById('hoods-grid');
   if(!el||!Object.keys(counts).length)return;
-  el.innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([hood,n])=>`<a href="#contact" class="hood-card"><div class="hood-name">${hood}</div><div class="hood-count">${n} listing${n===1?'':'s'} available</div></a>`).join('');
+  el.innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([hood,n])=>`<a href="#listings" class="hood-card" onclick="filterByHood('${hood}')"><div class="hood-name">${hood}</div><div class="hood-count">${n} listing${n===1?'':'s'} available</div></a>`).join('');
 }
 
 async function loadProfile(){
@@ -577,6 +579,31 @@ function closeModal(e){if(e.target===document.getElementById('modal-overlay'))cl
 function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',e=>{if(!document.getElementById('modal-overlay').classList.contains('open'))return;if(e.key==='Escape')closeModalDirect();if(e.key==='ArrowRight')cNext();if(e.key==='ArrowLeft')cPrev();});
 
+function filterByHood(hood){
+  const filtered=LISTINGS.filter(l=>l.neighborhood===hood);
+  const grid=document.getElementById('listings-grid');
+  if(!filtered.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4);font-size:0.78rem">No listings in '+hood+' right now.</div>';return;}
+  grid.innerHTML=filtered.map((l)=>{
+    const idx=LISTINGS.indexOf(l);
+    const photo=l.photos&&l.photos.length?l.photos[0]:'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80';
+    const badge=l.op_paid?'<span class="lcard-badge badge-nofee">No Fee</span>':l.badge?`<span class="lcard-badge badge-new">${l.badge}</span>`:'';
+    const rented=l.status==='rented'?'<span class="lcard-badge" style="background:var(--blue);color:var(--white);right:0.85rem;left:auto">Rented</span>':'';
+    const bedsVal=(!l.beds||l.beds==='0'||l.beds===0)?'Studio':l.beds;
+    const bedsLabel=bedsVal==='Studio'?'<div class="lcard-spec"><strong>Studio</strong>Type</div>':`<div class="lcard-spec"><strong>${bedsVal}</strong>Bed</div>`;
+    return`<div class="lcard" onclick="openListing(${idx})">
+      <div class="lcard-img">${badge}${rented}<img src="${photo}" alt="${l.neighborhood}" loading="lazy"></div>
+      <div class="lcard-body">
+        <div class="lcard-price">${l.price}</div>
+        <div class="lcard-name">${l.neighborhood}${bedsVal?' · '+bedsVal+(bedsVal==='Studio'?'':' Bed'):''}</div>
+        <div class="lcard-loc"><i class="ti ti-map-pin"></i>${l.neighborhood}</div>
+        <div class="lcard-specs">${bedsLabel}<div class="lcard-spec"><strong>${l.baths||'—'}</strong>Bath</div><div class="lcard-spec"><strong>${l.lease_length||'—'}</strong>Lease</div></div>
+        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('listings').scrollIntoView({behavior:'smooth'});
+}
+
 function filterListings(){
   const hood=document.getElementById('search-hood').value;
   const beds=document.getElementById('search-beds').value;
@@ -630,6 +657,7 @@ function filterListings(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  supa=window.supabase.createClient(SUPA_URL,SUPA_KEY);
   loadListings();
   loadProfile();
   const form=document.getElementById('contact-form');
