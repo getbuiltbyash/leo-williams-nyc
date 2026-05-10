@@ -348,6 +348,7 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
   .review-form{grid-template-columns:1fr}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -649,7 +650,7 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
         <div class="submit-bar">
           <div class="submit-note"><i class="ti ti-eye"></i> Preview before publishing — nothing goes live until you confirm</div>
           <div class="submit-btns">
-            <button class="btn-draft" onclick="showToast('Draft saved!')">Save Draft</button>
+            <button class="btn-draft" onclick="saveDraft()">Save Draft</button>
             <button class="btn-preview" onclick="openPreview()"><i class="ti ti-eye"></i> Preview</button>
             <button class="btn-pub" id="main-publish-btn" onclick="openPreview()"><i class="ti ti-world"></i> <span id="publish-btn-label">Publish</span></button>
           </div>
@@ -753,25 +754,46 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 </div>
 
 <script>
+// ── SUPABASE ──
+const SUPA_URL='https://mzhqwrtgztuajgvjugqa.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16aHF3cnRnenR1YWpndmp1Z3FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDU5OTksImV4cCI6MjA5NDAyMTk5OX0.oThSHjs6tfs6pSh63HObYsQhzzcgKxy07R5TWinD26g';
+const supa=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+
 // ── AUTH ──
-const DEMO_EMAIL='leo@leowilliamsnyc.com';
-const DEMO_PASS='leowilliams2026';
-function doLogin(){
-  const e=document.getElementById('login-email').value.trim();
-  const p=document.getElementById('login-password').value;
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
   const err=document.getElementById('login-error');
-  if(e===DEMO_EMAIL&&p===DEMO_PASS){
+  const btn=document.querySelector('.login-btn');
+  btn.textContent='Signing in...';btn.disabled=true;
+  try{
+    const{data,error}=await supa.auth.signInWithPassword({email,password});
+    if(error)throw error;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('shell').classList.add('visible');
     err.style.display='none';
-  }else{err.style.display='block';}
+    loadInquiriesFromDB();
+  }catch(e){
+    err.style.display='block';err.textContent='Incorrect email or password.';
+  }finally{btn.textContent='Sign In';btn.disabled=false;}
 }
-function doLogout(){
+
+async function doLogout(){
+  await supa.auth.signOut();
   document.getElementById('shell').classList.remove('visible');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-email').value='';
   document.getElementById('login-password').value='';
 }
+
+// Check if already logged in
+supa.auth.getSession().then((({data})=>{
+  if(data.session){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('shell').classList.add('visible');
+    loadInquiriesFromDB();
+  }
+}));
 
 // ── NAV ──
 function nav(id,el){
@@ -1051,10 +1073,48 @@ function syncPreview(){
 
 function openPreview(){syncPreview();document.getElementById('preview-overlay').classList.add('show');}
 function closePreview(){document.getElementById('preview-overlay').classList.remove('show');}
-function publishListing(){
+async function publishListing(){
   closePreview();
-  showToast(editMode?'Listing updated on your site!':'Listing published to your site!');
-  setEditMode(false);
+  const hood=document.getElementById('hood-name').textContent;
+  const price=normalizePrice(document.getElementById('f-price').value);
+  const beds=normalizeBeds(document.getElementById('f-beds').value);
+  const baths=normalizeBaths(document.getElementById('f-baths').value);
+  const lease=normalizeLease(document.getElementById('f-lease').value);
+  const desc=document.getElementById('f-desc').value;
+  const concessions=document.getElementById('f-concessions').value;
+  const addr=document.getElementById('f-addr').value;
+  if(!hood||!price){showToast('Add a neighborhood and price first.');return;}
+  try{
+    const amenityList=[...selected,...custom];
+    const{error}=await supa.from('listings').insert({
+      neighborhood:hood,
+      full_address:addr||null,
+      price,beds,baths,
+      lease_length:lease,
+      concessions:concessions||null,
+      op_paid:opPaid,
+      description:desc||null,
+      amenities:amenityList,
+      status:editMode?'live':'live'
+    });
+    if(error)throw error;
+    showToast(editMode?'Listing updated on your site!':'Listing published to your site!');
+    setEditMode(false);
+    // reset form
+    document.getElementById('f-addr').value='';
+    document.getElementById('f-price').value='';
+    document.getElementById('f-beds').value='';
+    document.getElementById('f-baths').value='';
+    document.getElementById('f-lease').value='';
+    document.getElementById('f-concessions').value='';
+    document.getElementById('f-desc').value='';
+    document.getElementById('f-notes').value='';
+    document.getElementById('photo-grid').innerHTML='';
+    document.getElementById('hood-detected').style.display='none';
+    document.querySelectorAll('.am-btn').forEach(b=>b.classList.remove('on'));
+    selected.clear();custom.length=0;renderCustomTags();
+    setFee(false);
+  }catch(e){showToast('Error saving listing. Try again.');}
 }
 
 // ── AI DESCRIPTION ──
@@ -1168,15 +1228,33 @@ function renderReviews(){
 }
 
 // ── INQUIRIES ──
-const INQUIRIES=[
-  {id:1,name:'Marcus & Priya T.',phone:'9175550182',email:'marcus.t@email.com',neighborhood:'Upper West Side',budget:'$3,000–$4,500',type:'renter',message:'Looking for a 2BR no-fee apartment, ideally near Riverside Park. We have a small dog. Move-in flexible but hoping for early June.',date:'2 hours ago',status:'new'},
-  {id:2,name:'Jamie R.',phone:'6465550234',email:'jamie.r@gmail.com',neighborhood:'Midtown',budget:'$2,000–$3,000',type:'renter',message:'Relocating from Chicago in July. Need a studio or 1BR near Midtown. Remote worker so quiet building preferred.',date:'Yesterday',status:'contacted'},
-  {id:3,name:'Aaliyah M.',phone:'7185550391',email:'aaliyah.m@email.com',neighborhood:'Williamsburg',budget:'$2,500–$3,500',type:'renter',message:"First time renting in NYC. Looking for a no-fee 1BR in Williamsburg or nearby. Available to move in June 1st.",date:'2 days ago',status:'new'},
-  {id:4,name:'Daniel K.',phone:'2125550447',email:'dankauf@email.com',neighborhood:'Upper East Side',budget:'$4,500–$6,000',type:'landlord',message:'Have a 3BR vacancy in a pre-war UES building. Looking for a reliable agent to find qualified tenants quickly.',date:'3 days ago',status:'closed'},
-  {id:5,name:'Sofia R.',phone:'9175550512',email:'sofia.r@email.com',neighborhood:'West Village',budget:'$3,000–$4,500',type:'renter',message:'Looking for a charming 1BR in the West Village. No-fee preferred. Pet friendly a plus.',date:'4 days ago',status:'new'},
-];
-
+let INQUIRIES=[];
 let currentInqFilter='all';
+
+async function loadInquiriesFromDB(){
+  try{
+    const{data,error}=await supa.from('inquiries').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    INQUIRIES=(data||[]).map(r=>({
+      id:r.id,
+      name:(r.first_name||'')+(r.last_name?' '+r.last_name:''),
+      phone:(r.phone||'').replace(/[^0-9]/g,''),
+      email:r.email||'',
+      neighborhood:r.neighborhood||'Not specified',
+      budget:r.budget||'Not specified',
+      type:r.inquiry_type||'renter',
+      message:r.message||'',
+      date:new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+      status:r.status||'new',
+      dbId:r.id
+    }));
+    // update badge count
+    const newCount=INQUIRIES.filter(i=>i.status==='new').length;
+    const badge=document.getElementById('inq-badge');
+    if(badge)badge.textContent=newCount||'';
+    renderInquiries();
+  }catch(e){console.error('Could not load inquiries',e);}
+}
 
 function renderInquiries(){
   const list=document.getElementById('inq-list');
@@ -1224,9 +1302,14 @@ function filterInq(status){
   renderInquiries();
 }
 
-function updateInqStatus(id,status){
+async function updateInqStatus(id,status){
   const inq=INQUIRIES.find(i=>i.id===id);
-  if(inq){inq.status=status;renderInquiries();}
+  if(!inq)return;
+  inq.status=status;
+  renderInquiries();
+  try{
+    await supa.from('inquiries').update({status}).eq('id',inq.dbId||inq.id);
+  }catch(e){console.error('Could not update status',e);}
 }
 
 renderInquiries();

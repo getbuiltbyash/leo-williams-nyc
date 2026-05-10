@@ -380,67 +380,9 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
     <div><div class="sec-label">Featured Listings</div><h2 class="sec-title">Current Availability</h2></div>
     <a href="#" class="link-more">View all listings →</a>
   </div>
-  <div class="listings-grid">
-    <div class="lcard" onclick="openListing(0)">
-      <div class="lcard-img"><span class="lcard-badge badge-nofee">No Fee</span><img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80" alt="Upper West Side 2BR"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$3,400<span>/mo</span></div>
-        <div class="lcard-name">Spacious 2BR, Prewar Details</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>Upper West Side</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>2</strong>Bed</div><div class="lcard-spec"><strong>1</strong>Bath</div><div class="lcard-spec"><strong>12 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
-    <div class="lcard" onclick="openListing(1)">
-      <div class="lcard-img"><span class="lcard-badge badge-new">New</span><img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&q=80" alt="Midtown Studio"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$2,100<span>/mo</span></div>
-        <div class="lcard-name">Luxury Studio, Doorman Building</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>Midtown West</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>Studio</strong>Type</div><div class="lcard-spec"><strong>1</strong>Bath</div><div class="lcard-spec"><strong>12 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
-    <div class="lcard" onclick="openListing(2)">
-      <div class="lcard-img"><span class="lcard-badge badge-nofee">No Fee</span><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=700&q=80" alt="Williamsburg 1BR"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$2,850<span>/mo</span></div>
-        <div class="lcard-name">Bright 1BR, Exposed Brick</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>Williamsburg, Brooklyn</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>1</strong>Bed</div><div class="lcard-spec"><strong>1</strong>Bath</div><div class="lcard-spec"><strong>12 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
-    <div class="lcard" onclick="openListing(3)">
-      <div class="lcard-img"><img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=700&q=80" alt="Upper East Side 3BR"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$5,200<span>/mo</span></div>
-        <div class="lcard-name">Classic 3BR, White Glove Building</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>Upper East Side</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>3</strong>Bed</div><div class="lcard-spec"><strong>2</strong>Bath</div><div class="lcard-spec"><strong>24 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
-    <div class="lcard" onclick="openListing(4)">
-      <div class="lcard-img"><span class="lcard-badge badge-nofee">No Fee</span><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=700&q=80" alt="West Village 1BR"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$3,100<span>/mo</span></div>
-        <div class="lcard-name">Charming 1BR, West Village Walk-Up</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>West Village</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>1</strong>Bed</div><div class="lcard-spec"><strong>1</strong>Bath</div><div class="lcard-spec"><strong>12 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
-    <div class="lcard" onclick="openListing(5)">
-      <div class="lcard-img"><img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80" alt="Astoria 2BR"></div>
-      <div class="lcard-body">
-        <div class="lcard-price">$2,400<span>/mo</span></div>
-        <div class="lcard-name">Renovated 2BR, Rooftop Access</div>
-        <div class="lcard-loc"><i class="ti ti-map-pin"></i>Astoria, Queens</div>
-        <div class="lcard-specs"><div class="lcard-spec"><strong>2</strong>Bed</div><div class="lcard-spec"><strong>1</strong>Bath</div><div class="lcard-spec"><strong>12 mo</strong>Lease</div></div>
-        <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
-      </div>
-    </div>
+  <div class="listings-grid" id="listings-grid">
+    <!-- loaded from Supabase -->
+    <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4);font-size:0.78rem">Loading listings...</div>
   </div>
 </section>
 
@@ -452,7 +394,7 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
     <div><div class="sec-label">Explore by Area</div><h2 class="sec-title">NYC Neighborhood Guides</h2>
     <p class="sec-sub" style="margin-top:0.5rem">Not sure where to live? I can guide you to the right neighborhood.</p></div>
   </div>
-  <div class="hoods-grid">
+  <div class="hoods-grid" id="hoods-grid">
     <a href="#contact" class="hood-card"><div class="hood-name">Upper West Side</div><div class="hood-count">View available listings</div></a>
     <a href="#contact" class="hood-card"><div class="hood-name">Upper East Side</div><div class="hood-count">View available listings</div></a>
     <a href="#contact" class="hood-card"><div class="hood-name">Midtown</div><div class="hood-count">View available listings</div></a>
@@ -496,13 +438,13 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
       <h2 class="sec-title">Find Your<br>Next Apartment</h2>
       <p class="contact-sub">Get in touch or request a tour on any listing. I'll get back to you the same day.</p>
       <div class="cways">
-        <div class="cway"><div class="cway-icon" style="font-size:16px">📞</div><span>Call or text: <a href="#contact">Update in admin</a></span></div>
-        <div class="cway"><div class="cway-icon" style="font-size:16px">✉</div><span>Email: <a href="#contact">Update in admin</a></span></div>
+        <div class="cway"><div class="cway-icon" style="font-size:16px">📞</div><span class="cway-phone">Call or text: <a href="#contact">Update in admin</a></span></div>
+        <div class="cway"><div class="cway-icon" style="font-size:16px">✉</div><span class="cway-email">Email: <a href="#contact">Update in admin</a></span></div>
         <div class="cway"><div class="cway-icon" style="font-size:16px">◷</div><span>Same-day response, 7 days a week</span></div>
       </div>
     </div>
   </div>
-  <div class="contact-right">
+  <div class="contact-right"><form id="contact-form">
     <div class="form-section-label">Send a Message</div>
     <div class="ff" style="margin-bottom:1rem">
       <label>I am a</label>
@@ -512,18 +454,18 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
       </div>
     </div>
     <div class="form-row">
-      <div class="ff"><label>First Name</label><input type="text" placeholder="Alex"></div>
-      <div class="ff"><label>Last Name</label><input type="text" placeholder="Johnson"></div>
+      <div class="ff"><label>First Name</label><input type="text" placeholder="Alex" name="first_name"></div>
+      <div class="ff"><label>Last Name</label><input type="text" placeholder="Johnson" name="last_name"></div>
     </div>
-    <div class="ff"><label>Email</label><input type="email" placeholder="alex@email.com"></div>
-    <div class="ff"><label>Phone</label><input type="tel" placeholder="(212) 000-0000"></div>
+    <div class="ff"><label>Email</label><input type="email" placeholder="alex@email.com" name="email"></div>
+    <div class="ff"><label>Phone</label><input type="tel" placeholder="(212) 000-0000" name="phone"></div>
     <div class="form-row">
-      <div class="ff"><label>Neighborhood</label><select><option>Any / open</option><option>Upper West Side</option><option>Upper East Side</option><option>Midtown</option><option>West Village</option><option>Williamsburg</option><option>Astoria</option></select></div>
-      <div class="ff"><label>Budget</label><select><option>Under $2,000</option><option>$2,000–$3,000</option><option>$3,000–$4,500</option><option>$4,500–$6,000</option><option>$6,000+</option></select></div>
+      <div class="ff"><label>Neighborhood</label><select name="neighborhood"><option>Any / open</option><option>Upper West Side</option><option>Upper East Side</option><option>Midtown</option><option>West Village</option><option>Williamsburg</option><option>Astoria</option></select></div>
+      <div class="ff"><label>Budget</label><select name="budget"><option>Under $2,000</option><option>$2,000–$3,000</option><option>$3,000–$4,500</option><option>$4,500–$6,000</option><option>$6,000+</option></select></div>
     </div>
-    <div class="ff"><label>Message</label><textarea placeholder="Tell me what you're looking for..."></textarea></div>
-    <button class="form-submit">Send Message</button>
-  </div>
+    <div class="ff"><label>Message</label><textarea placeholder="Tell me what you're looking for..." name="message"></textarea></div>
+    <button class="form-submit" type="submit">Send Message</button>
+  </form></div>
 </section>
 
 <!-- FOOTER -->
@@ -538,42 +480,85 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
   <div class="footer-copy">© 2026 Leo Williams · Licensed Real Estate Salesperson · <a href="https://digiuliogroup.com" target="_blank" style="color:rgba(255,255,255,0.35);text-decoration:none">DiGiulio Group</a></div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const LISTINGS=[
-  {id:0,price:'$3,400/mo',name:'Spacious 2BR, Prewar Details',neighborhood:'Upper West Side',beds:'2',baths:'1',lease:'12 months',nofee:true,badge:'No Fee',desc:'A classic prewar 2BR on a quiet, tree-lined block in the heart of the UWS. High ceilings, original hardwood floors, and a renovated kitchen. Steps from Riverside Park and the 1/2/3 trains. No broker fee.',amenities:['Elevator','Laundry in building','Heat included','Great natural light','Hardwood floors'],concessions:'',photos:['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&q=80','https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1000&q=80','https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1000&q=80']},
-  {id:1,price:'$2,100/mo',name:'Luxury Studio, Doorman Building',neighborhood:'Midtown West',beds:'Studio',baths:'1',lease:'12 months',nofee:false,badge:'New',desc:'Sleek doorman studio in a full-service Midtown building. Floor-to-ceiling windows, modern finishes, and a gym on site. Perfect for the professional who wants everything within reach.',amenities:['Doorman','Elevator','Full gym','Central A/C','Package room'],concessions:'',photos:['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1000&q=80','https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1000&q=80']},
-  {id:2,price:'$2,850/mo',name:'Bright 1BR, Exposed Brick',neighborhood:'Williamsburg, Brooklyn',beds:'1',baths:'1',lease:'12 months',nofee:true,badge:'No Fee',desc:"Bright, airy 1BR with exposed brick and original hardwood floors on one of Williamsburg's best blocks. South-facing windows bring in all-day light. Steps from the L train and Bedford Ave.",amenities:['In-unit laundry','Central A/C','Great natural light','Bike storage','Pet friendly'],concessions:'1 month free on 12-month lease',photos:['https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1000&q=80','https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&q=80']},
-  {id:3,price:'$5,200/mo',name:'Classic 3BR, White Glove Building',neighborhood:'Upper East Side',beds:'3',baths:'2',lease:'24 months',nofee:false,badge:null,desc:'A grand pre-war 3BR in a white-glove UES building. Formal dining room, windowed kitchen, and two renovated bathrooms. Full-time doorman, live-in super, and Central Park around the corner.',amenities:['Doorman','Elevator','Concierge','Central A/C','Storage unit','Bike storage'],concessions:'',photos:['https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1000&q=80','https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1000&q=80']},
-  {id:4,price:'$3,100/mo',name:'Charming 1BR, West Village Walk-Up',neighborhood:'West Village',beds:'1',baths:'1',lease:'12 months',nofee:true,badge:'No Fee',desc:"Charming walk-up 1BR on a cobblestone West Village block. Exposed brick, a working fireplace, and the city's best restaurants right outside your door. These don't last.",amenities:['Great natural light','Pet friendly','Hardwood floors'],concessions:'',photos:['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1000&q=80','https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1000&q=80']},
-  {id:5,price:'$2,400/mo',name:'Renovated 2BR, Rooftop Access',neighborhood:'Astoria, Queens',beds:'2',baths:'1',lease:'12 months',nofee:false,badge:null,desc:'Renovated 2BR with access to a shared rooftop in one of Astoria\'s most sought-after buildings. Updated kitchen, in-unit washer/dryer, and easy access to Manhattan via the N/W trains.',amenities:['Elevator','In-unit laundry','Rooftop access','Central A/C','Pet friendly'],concessions:'',photos:['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1000&q=80','https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&q=80']}
-];
+const SUPA_URL='https://mzhqwrtgztuajgvjugqa.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16aHF3cnRnenR1YWpndmp1Z3FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDU5OTksImV4cCI6MjA5NDAyMTk5OX0.oThSHjs6tfs6pSh63HObYsQhzzcgKxy07R5TWinD26g';
+const supa=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+let LISTINGS=[];
+
+async function loadListings(){
+  const grid=document.getElementById('listings-grid');
+  try{
+    const{data,error}=await supa.from('listings').select('*').in('status',['live','rented']).order('created_at',{ascending:false});
+    if(error)throw error;
+    LISTINGS=data||[];
+    if(!LISTINGS.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4);font-size:0.78rem">No listings available right now. Check back soon.</div>';return;}
+    grid.innerHTML=LISTINGS.map((l,i)=>{
+      const photo=l.photos&&l.photos.length?l.photos[0]:'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80';
+      const badge=l.op_paid?'<span class="lcard-badge badge-nofee">No Fee</span>':l.badge?`<span class="lcard-badge badge-new">${l.badge}</span>`:'';
+      const rented=l.status==='rented'?'<span class="lcard-badge" style="background:var(--blue);color:var(--white);right:0.85rem;left:auto">Rented</span>':'';
+      const bedsLabel=l.beds==='Studio'?'<div class="lcard-spec"><strong>Studio</strong>Type</div>':`<div class="lcard-spec"><strong>${l.beds||'—'}</strong>Bed</div>`;
+      return`<div class="lcard" onclick="openListing(${i})">
+        <div class="lcard-img">${badge}${rented}<img src="${photo}" alt="${l.neighborhood}" loading="lazy"></div>
+        <div class="lcard-body">
+          <div class="lcard-price">${l.price}</div>
+          <div class="lcard-name">${l.neighborhood}${l.beds?' · '+l.beds+(l.beds==='Studio'?'':' Bed'):''}</div>
+          <div class="lcard-loc"><i class="ti ti-map-pin"></i>${l.neighborhood}</div>
+          <div class="lcard-specs">${bedsLabel}<div class="lcard-spec"><strong>${l.baths||'—'}</strong>Bath</div><div class="lcard-spec"><strong>${l.lease_length||'—'}</strong>Lease</div></div>
+          <div class="lcard-hint"><i class="ti ti-camera"></i> View photos & details</div>
+        </div>
+      </div>`;
+    }).join('');
+    loadNeighborhoods(LISTINGS);
+  }catch(e){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink4)">Could not load listings.</div>';}
+}
+
+function loadNeighborhoods(listings){
+  const live=listings.filter(l=>l.status==='live');
+  const counts={};
+  live.forEach(l=>{counts[l.neighborhood]=(counts[l.neighborhood]||0)+1;});
+  const el=document.getElementById('hoods-grid');
+  if(!el||!Object.keys(counts).length)return;
+  el.innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([hood,n])=>`<a href="#contact" class="hood-card"><div class="hood-name">${hood}</div><div class="hood-count">${n} listing${n===1?'':'s'} available</div></a>`).join('');
+}
+
+async function loadProfile(){
+  try{
+    const{data}=await supa.from('profile').select('phone,email').single();
+    if(!data)return;
+    if(data.phone){document.querySelectorAll('.cway-phone').forEach(el=>{el.innerHTML=`Call or text: <a href="tel:${data.phone.replace(/[^0-9]/g,'')}">${data.phone}</a>`;});}
+    if(data.email){document.querySelectorAll('.cway-email').forEach(el=>{el.innerHTML=`Email: <a href="mailto:${data.email}">${data.email}</a>`;});}
+  }catch(e){}
+}
 
 let cur=0,total=0;
 
 function openListing(idx){
-  const l=LISTINGS[idx];
+  const l=LISTINGS[idx];if(!l)return;
   document.body.style.overflow='hidden';
-  // badges
-  const b=document.getElementById('modal-badges');
-  b.innerHTML='';
-  if(l.nofee){const s=document.createElement('span');s.className='modal-badge badge-nofee';s.textContent='No Fee';b.appendChild(s);}
-  if(l.badge&&l.badge!=='No Fee'){const s=document.createElement('span');s.className='modal-badge badge-new';s.textContent=l.badge;b.appendChild(s);}
+  const b=document.getElementById('modal-badges');b.innerHTML='';
+  if(l.op_paid){const s=document.createElement('span');s.className='modal-badge badge-nofee';s.textContent='No Fee';b.appendChild(s);}
+  if(l.badge&&!l.op_paid){const s=document.createElement('span');s.className='modal-badge badge-new';s.textContent=l.badge;b.appendChild(s);}
+  if(l.status==='rented'){const s=document.createElement('span');s.className='modal-badge';s.style.cssText='background:var(--blue);color:var(--white)';s.textContent='Rented';b.appendChild(s);}
   document.getElementById('modal-price').textContent=l.price;
-  document.getElementById('modal-name').textContent=l.name;
+  document.getElementById('modal-name').textContent=l.neighborhood+(l.beds?' · '+l.beds+(l.beds==='Studio'?'':' Bed'):'');
   document.getElementById('modal-loc').innerHTML=`<i class="ti ti-map-pin" style="font-size:14px;color:var(--blue)"></i>${l.neighborhood}`;
-  document.getElementById('modal-specs').innerHTML=`<div class="modal-spec"><strong>${l.beds}</strong>Bedrooms</div><div class="modal-spec"><strong>${l.baths}</strong>Bathrooms</div><div class="modal-spec"><strong>${l.lease}</strong>Lease</div><div class="modal-spec"><strong>${l.nofee?'No Fee':'Tenant pays'}</strong>Broker fee</div>`;
-  document.getElementById('modal-desc').textContent=l.desc;
+  document.getElementById('modal-specs').innerHTML=`<div class="modal-spec"><strong>${l.beds||'—'}</strong>Bedrooms</div><div class="modal-spec"><strong>${l.baths||'—'}</strong>Bathrooms</div><div class="modal-spec"><strong>${l.lease_length||'—'}</strong>Lease</div><div class="modal-spec"><strong>${l.op_paid?'No Fee':'Tenant pays'}</strong>Broker fee</div>`;
+  document.getElementById('modal-desc').textContent=l.description||'';
   const cc=document.getElementById('modal-concessions');
   if(l.concessions){cc.style.display='flex';document.getElementById('modal-concessions-text').textContent=l.concessions;}else{cc.style.display='none';}
   const aw=document.getElementById('modal-am-wrap');
-  if(l.amenities&&l.amenities.length){aw.style.display='block';document.getElementById('modal-ams').innerHTML=l.amenities.map(a=>`<span class="modal-am">${a}</span>`).join('');}else{aw.style.display='none';}
-  // carousel
-  cur=0;total=l.photos.length;
+  const ams=l.amenities||[];
+  if(ams.length){aw.style.display='block';document.getElementById('modal-ams').innerHTML=ams.map(a=>`<span class="modal-am">${a}</span>`).join('');}else{aw.style.display='none';}
+  cur=0;
+  const photos=l.photos&&l.photos.length?l.photos:['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1000&q=80'];
+  total=photos.length;
   const track=document.getElementById('carousel-track');
   track.style.transform='translateX(0)';
-  track.innerHTML=l.photos.map(p=>`<div class="carousel-slide"><img src="${p}" alt="${l.name}" loading="lazy"></div>`).join('');
+  track.innerHTML=photos.map(p=>`<div class="carousel-slide"><img src="${p}" alt="${l.neighborhood}" loading="lazy"></div>`).join('');
   const dots=document.getElementById('cdots');
-  dots.innerHTML=l.photos.map((_,i)=>`<button class="cdot${i===0?' active':''}" onclick="goTo(${i})" aria-label="Slide ${i+1}"></button>`).join('');
+  dots.innerHTML=photos.map((_,i)=>`<button class="cdot${i===0?' active':''}" onclick="goTo(${i})" aria-label="Slide ${i+1}"></button>`).join('');
   document.getElementById('ccount').textContent=`1 / ${total}`;
   const show=total>1;
   document.querySelector('.cprev').style.display=show?'flex':'none';
@@ -583,33 +568,58 @@ function openListing(idx){
   document.getElementById('modal').scrollTop=0;
 }
 
-function goTo(n){
-  cur=n;
-  document.getElementById('carousel-track').style.transform=`translateX(-${n*100}%)`;
-  document.querySelectorAll('.cdot').forEach((d,i)=>d.classList.toggle('active',i===n));
-  document.getElementById('ccount').textContent=`${n+1} / ${total}`;
-}
+function goTo(n){cur=n;document.getElementById('carousel-track').style.transform=`translateX(-${n*100}%)`;document.querySelectorAll('.cdot').forEach((d,i)=>d.classList.toggle('active',i===n));document.getElementById('ccount').textContent=`${n+1} / ${total}`;}
 function cNext(){goTo((cur+1)%total);}
 function cPrev(){goTo((cur-1+total)%total);}
 function closeModal(e){if(e.target===document.getElementById('modal-overlay'))closeModalDirect();}
 function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';}
-document.addEventListener('keydown',e=>{
-  if(!document.getElementById('modal-overlay').classList.contains('open'))return;
-  if(e.key==='Escape')closeModalDirect();
-  if(e.key==='ArrowRight')cNext();
-  if(e.key==='ArrowLeft')cPrev();
-});
+document.addEventListener('keydown',e=>{if(!document.getElementById('modal-overlay').classList.contains('open'))return;if(e.key==='Escape')closeModalDirect();if(e.key==='ArrowRight')cNext();if(e.key==='ArrowLeft')cPrev();});
+
 function setInquiryType(type){
   const rBtn=document.getElementById('type-renter');
   const lBtn=document.getElementById('type-landlord');
   if(type==='renter'){
-    rBtn.style.background='var(--ink)';rBtn.style.color='var(--white)';rBtn.style.fontWeight='600';rBtn.style.borderColor='var(--ink)';
-    lBtn.style.background='var(--off)';lBtn.style.color='var(--ink3)';lBtn.style.fontWeight='400';lBtn.style.borderColor='var(--rule)';
-  } else {
-    lBtn.style.background='var(--ink)';lBtn.style.color='var(--white)';lBtn.style.fontWeight='600';lBtn.style.borderColor='var(--ink)';
-    rBtn.style.background='var(--off)';rBtn.style.color='var(--ink3)';rBtn.style.fontWeight='400';rBtn.style.borderColor='var(--rule)';
+    rBtn.style.cssText='flex:1;padding:0.6rem 0;font-family:var(--sans);font-size:0.72rem;font-weight:600;border:1px solid var(--ink);border-right:none;background:var(--ink);color:var(--white);cursor:pointer;transition:all 0.15s';
+    lBtn.style.cssText='flex:1;padding:0.6rem 0;font-family:var(--sans);font-size:0.72rem;font-weight:400;border:1px solid var(--rule);background:var(--off);color:var(--ink3);cursor:pointer;transition:all 0.15s';
+  }else{
+    lBtn.style.cssText='flex:1;padding:0.6rem 0;font-family:var(--sans);font-size:0.72rem;font-weight:600;border:1px solid var(--ink);background:var(--ink);color:var(--white);cursor:pointer;transition:all 0.15s';
+    rBtn.style.cssText='flex:1;padding:0.6rem 0;font-family:var(--sans);font-size:0.72rem;font-weight:400;border:1px solid var(--rule);border-right:none;background:var(--off);color:var(--ink3);cursor:pointer;transition:all 0.15s';
   }
 }
-</script>
+
+document.addEventListener('DOMContentLoaded',()=>{
+  loadListings();
+  loadProfile();
+  const form=document.getElementById('contact-form');
+  if(!form)return;
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const btn=form.querySelector('.form-submit');
+    btn.textContent='Sending...';btn.disabled=true;
+    const lBtn=document.getElementById('type-landlord');
+    const isLandlord=lBtn&&lBtn.style.background&&(lBtn.style.background.includes('17,17,16')||lBtn.style.background==='var(--ink)'||lBtn.style.fontWeight==='600');
+    try{
+      const{error}=await supa.from('inquiries').insert({
+        first_name:form.querySelector('[name="first_name"]').value,
+        last_name:form.querySelector('[name="last_name"]').value,
+        email:form.querySelector('[name="email"]').value,
+        phone:form.querySelector('[name="phone"]').value,
+        neighborhood:form.querySelector('[name="neighborhood"]').value,
+        budget:form.querySelector('[name="budget"]').value,
+        message:form.querySelector('[name="message"]').value,
+        inquiry_type:isLandlord?'landlord':'renter',
+        source:'contact_form'
+      });
+      if(error)throw error;
+      btn.textContent='Message sent!';btn.style.background='var(--blue)';
+      form.reset();
+      setTimeout(()=>{btn.textContent='Send Message';btn.disabled=false;btn.style.background='';},3000);
+    }catch(err){
+      btn.textContent='Something went wrong. Try again.';btn.disabled=false;
+      setTimeout(()=>{btn.textContent='Send Message';},3000);
+    }
+  });
+});
+
 </body>
 </html>
