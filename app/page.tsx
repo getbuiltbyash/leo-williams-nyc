@@ -1,5 +1,4 @@
 'use client'
-export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef } from 'react'
 import { getSupabase } from '@/lib/supabase'
 
@@ -67,15 +66,20 @@ export default function Home() {
   }, [modal])
 
   async function loadListings() {
-    const { data, error } = await getSupabase()
-      .from('listings')
-      .select('*')
-      .in('status', ['live', 'rented'])
-      .order('created_at', { ascending: false })
-    if (error) { console.error(error); setLoading(false); return }
-    setListings(data || [])
-    setFiltered(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await getSupabase()
+        .from('listings')
+        .select('*')
+        .in('status', ['live', 'rented'])
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setListings(data || [])
+      setFiltered(data || [])
+    } catch(e) {
+      console.error('Listings fetch failed:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function loadProfile() {
@@ -145,8 +149,8 @@ export default function Home() {
           <img src={HERO_IMG} alt="New York City" />
         </div>
         <div className="hero-content">
-          <div className="eyebrow">— NYC Rentals</div>
-          <h1 className="hero-h1">Find your<br /><em>perfect</em><br />New York home.</h1>
+          <div className="eyebrow">— NYC Rental Specialist</div>
+          <h1 className="hero-h1">The City.<br /><em>Perfectly</em><br />Placed.</h1>
           <div className="hero-rule" />
           <p className="hero-sub">Curated rentals and expert guidance across New York. I&apos;ll find you the right place and get you moved in, fast.</p>
           <div className="hero-btns">
@@ -298,9 +302,9 @@ export default function Home() {
         </div>
         <div className="about-content">
           <div className="sec-label">About Leo</div>
-          <h2 className="sec-title">Your NYC<br />rental expert.</h2>
+          <h2 className="sec-title">New York.<br />No Runaround.<br />No Guesswork.</h2>
           <p className="about-body">
-            {profile.bio_text || "I've spent years learning this city, neighborhood by neighborhood. I know which buildings have responsive super teams, which streets are loud on weekends, and which landlords are fair to work with. That knowledge is yours when you work with me."}
+            {profile.bio_text || "I've spent years learning this city, neighborhood by neighborhood. The buildings worth living in, the landlords who actually take care of their tenants, and the homes that feel right the moment you walk in. Whether you're relocating, renting for the first time, or just ready for something better, I'll get you there without the runaround."}
           </p>
           <blockquote className="about-quote">
             &ldquo;I don&apos;t just find you an apartment. I find you a home that actually fits your life.&rdquo;
@@ -318,8 +322,8 @@ export default function Home() {
       <section className="contact-sec" id="contact">
         <div className="contact-left">
           <div className="sec-label" style={{color:'var(--gold)'}}>Get in Touch</div>
-          <h2 className="sec-title" style={{color:'var(--white)'}}>Let&apos;s find your<br />next home.</h2>
-          <p className="contact-sub">Whether you&apos;re searching for a new rental or looking to fill a vacancy — I&apos;m here to help.</p>
+          <h2 className="sec-title" style={{color:'var(--white)'}}>Find Your<br />Next Apartment</h2>
+          <p className="contact-sub">Get in touch or request a tour on any listing. I'll get back to you the same day.</p>
           <div className="cways">
             <div className="cway">
               <div className="cway-icon">📞</div>
