@@ -1,6 +1,7 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 type Listing = {
   id: string
@@ -66,7 +67,7 @@ export default function Home() {
   }, [modal])
 
   async function loadListings() {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('listings')
       .select('*')
       .in('status', ['live', 'rented'])
@@ -78,7 +79,7 @@ export default function Home() {
   }
 
   async function loadProfile() {
-    const { data } = await supabase.from('profile').select('*').limit(1).single()
+    const { data } = await getSupabase().from('profile').select('*').limit(1).single()
     if (data) setProfile(data)
   }
 
@@ -114,7 +115,7 @@ export default function Home() {
   async function submitForm(e: React.FormEvent) {
     e.preventDefault()
     setFormLoading(true)
-    const { error } = await supabase.from('inquiries').insert([{ ...formData, status: 'new', source: 'website' }])
+    const { error } = await getSupabase().from('inquiries').insert([{ ...formData, status: 'new', source: 'website' }])
     setFormLoading(false)
     if (!error) setFormSent(true)
   }
