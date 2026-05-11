@@ -198,16 +198,36 @@ export default function Admin(){
     }
   }
 
+  async function convertToJpeg(file:File):Promise<Blob>{
+    return new Promise((resolve,reject)=>{
+      const img=new Image()
+      const url=URL.createObjectURL(file)
+      img.onload=()=>{
+        const canvas=document.createElement('canvas')
+        canvas.width=img.width;canvas.height=img.height
+        canvas.getContext('2d')!.drawImage(img,0,0)
+        canvas.toBlob(blob=>{
+          URL.revokeObjectURL(url)
+          blob?resolve(blob):reject(new Error('conversion failed'))
+        },'image/jpeg',0.9)
+      }
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('load failed'))}
+      img.src=url
+    })
+  }
+
   async function uploadListingPhotos(e:React.ChangeEvent<HTMLInputElement>){
     const files=e.target.files;if(!files||files.length===0)return
     setListingPhotoUp(true)
     const uploaded:string[]=[]
     for(let i=0;i<files.length;i++){
       const file=files[i]
-      const ext=file.name.split('.').pop()
-      const path=`listings/${Date.now()}-${i}.${ext}`
-      const{error}=await getSupabase().storage.from('listing-photos').upload(path,file,{upsert:true})
-      if(!error){const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path);uploaded.push(data.publicUrl)}
+      try{
+        const blob=await convertToJpeg(file)
+        const path=`listings/${Date.now()}-${i}.jpg`
+        const{error}=await getSupabase().storage.from('listing-photos').upload(path,blob,{upsert:true,contentType:'image/jpeg'})
+        if(!error){const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path);uploaded.push(data.publicUrl)}
+      }catch(err){console.error('upload error:',err)}
     }
     setForm(p=>({...p,photos:[...p.photos,...uploaded]}))
     setListingPhotoUp(false)
@@ -452,14 +472,14 @@ export default function Admin(){
                 </label>
                 {form.photos.length>0&&(
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'8px'}}>
-                    {form.photos.map((url,idx)=>(
-                      <div key={idx} style={{position:'relative',aspectRatio:'1',overflow:'hidden',background:PAPER,outline:idx===0?`2px solid ${G}`:'none'}}>
-                        <img src={url} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                        {idx===0
+                    {form.photos.map((photoUrl,photoIdx)=>(
+                      <div key={photoIdx} style={{position:'relative',aspectRatio:'1',overflow:'hidden',background:PAPER,outline:photoIdx===0?`2px solid ${G}`:'none'}}>
+                        <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                        {photoIdx===0
                           ?<span style={{position:'absolute',top:'4px',left:'4px',background:G,color:'#fff',fontSize:'9px',fontWeight:700,padding:'2px 6px',fontFamily:F}}>COVER</span>
-                          :<button onClick={()=>setForm(p=>({...p,photos:[url,...p.photos.filter((_,i)=>i!==idx)]}))} style={{position:'absolute',top:'4px',left:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F}}>Set Cover</button>
+                          :<button onClick={()=>setForm(p=>{const arr=[...p.photos];arr.splice(photoIdx,1);return{...p,photos:[photoUrl,...arr]};})} style={{position:'absolute',top:'4px',left:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F}}>Set Cover</button>
                         }
-                        <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==idx)}))} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'22px',height:'22px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                        <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,pi)=>pi!==photoIdx)}))} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'22px',height:'22px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
                       </div>
                     ))}
                   </div>
