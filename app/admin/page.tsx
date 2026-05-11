@@ -505,33 +505,45 @@ export default function Admin(){
                     <div style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>
                       Public Photos — tap numbers to set order, tap again to remove from order
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:'8px'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
                       {form.photos.map((photoUrl,photoIdx)=>{
                         const orderPos=photoOrder.indexOf(photoIdx)
                         const isCover=photoOrder[0]===photoIdx||(photoOrder.length===0&&photoIdx===0)
                         return(
-                          <div key={photoIdx} style={{position:'relative',aspectRatio:'3/2',overflow:'hidden',background:PAPER,outline:isCover?`2px solid ${G}`:orderPos>=0?`2px solid ${BL}`:'none'}}>
-                            <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                            {/* Order badge */}
-                            <button onClick={()=>{
-                              setPhotoOrder(prev=>{
-                                if(prev.includes(photoIdx)) return prev.filter(i=>i!==photoIdx)
-                                return [...prev,photoIdx]
-                              })
-                            }} style={{position:'absolute',top:'4px',left:'4px',background:isCover?G:orderPos>=0?BL:'rgba(0,0,0,0.55)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F,minWidth:'20px'}}>
-                              {isCover?'COVER':orderPos>=0?orderPos+1:'#'}
-                            </button>
-                            {/* Make cover */}
-                            {!isCover&&<button onClick={()=>setPhotoOrder(prev=>[photoIdx,...prev.filter(i=>i!==photoIdx)])} style={{position:'absolute',bottom:'4px',left:'4px',background:'rgba(0,0,0,0.55)',color:G,border:`1px solid ${G}`,fontSize:'8px',fontWeight:700,padding:'2px 5px',cursor:'pointer',fontFamily:F}}>Cover</button>}
-                            {/* Move to private */}
-                            <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx),private_photos:[...p.private_photos,photoUrl]}))} style={{position:'absolute',bottom:'4px',right:'4px',background:'rgba(0,0,0,0.55)',color:'#fff',border:'none',fontSize:'8px',padding:'2px 5px',cursor:'pointer',fontFamily:F}}>🔒</button>
-                            {/* Delete */}
-                            <button onClick={()=>{setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx)}));setPhotoOrder(prev=>prev.filter(i=>i!==photoIdx).map(i=>i>photoIdx?i-1:i))}} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'20px',height:'20px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',lineHeight:'20px',textAlign:'center'}}>×</button>
+                          <div key={photoIdx} style={{display:'flex',alignItems:'center',gap:'12px',background:isCover?'#FFFBF2':orderPos>=0?'#EEF2F8':OFF,border:`1px solid ${isCover?G:orderPos>=0?BL:R}`,padding:'8px'}}>
+                            {/* Thumbnail */}
+                            <div style={{width:'120px',height:'80px',flexShrink:0,overflow:'hidden',background:PAPER}}>
+                              <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                            </div>
+                            {/* Info + actions */}
+                            <div style={{flex:1,display:'flex',flexDirection:'column',gap:'6px'}}>
+                              <div style={{fontSize:'12px',fontWeight:700,color:isCover?G:orderPos>=0?BL:'#9B9B98',fontFamily:F}}>
+                                {isCover?'⭐ Cover Photo':orderPos>=0?`#${orderPos+1} in order`:'Not ordered'}
+                              </div>
+                              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                                {!isCover&&(
+                                  <button onClick={()=>setPhotoOrder(prev=>[photoIdx,...prev.filter(i=>i!==photoIdx)])} style={{...PB,background:G,fontSize:'10px',padding:'4px 10px'}}>
+                                    Make Cover
+                                  </button>
+                                )}
+                                <button onClick={()=>{
+                                  setPhotoOrder(prev=>prev.includes(photoIdx)?prev.filter(i=>i!==photoIdx):[...prev,photoIdx])
+                                }} style={{...GB,fontSize:'10px',padding:'4px 10px',background:orderPos>=0?BL:OFF,color:orderPos>=0?'#fff':'#6B6B68',border:`1px solid ${orderPos>=0?BL:R}`}}>
+                                  {orderPos>=0?`Remove #${orderPos+1}`:'Add to Order'}
+                                </button>
+                                <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx),private_photos:[...p.private_photos,photoUrl]}))} style={{...GB,fontSize:'10px',padding:'4px 10px'}}>
+                                  🔒 Make Private
+                                </button>
+                                <button onClick={()=>{setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx)}));setPhotoOrder(prev=>prev.filter(i=>i!==photoIdx).map(i=>i>photoIdx?i-1:i))}} style={{...GB,fontSize:'10px',padding:'4px 10px',color:DNG,borderColor:'#FDECEA'}}>
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )
                       })}
                     </div>
-                    <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'6px'}}>{form.photos.length} public photo{form.photos.length!==1?'s':''} · 🔒 moves to private · × deletes</div>
+                    <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'8px'}}>{form.photos.length} public photo{form.photos.length!==1?'s':''}</div>
                   </div>
                 )}
 
