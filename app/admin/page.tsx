@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import type heic2anyType from 'heic2any'
 import { getSupabase } from '@/lib/supabase'
 import { normalizePrice, normalizeBeds, normalizeBaths, normalizeLease, normalizeConcessions } from '@/lib/normalize'
 
@@ -198,6 +199,27 @@ export default function Admin(){
     }
   }
 
+  async function toJpegBlob(file:File):Promise<Blob>{
+    const isHeic=file.type==='image/heic'||file.type==='image/heif'||file.name.toLowerCase().endsWith('.heic')||file.name.toLowerCase().endsWith('.heif')
+    if(isHeic){
+      const h2a=await import('heic2any')
+      const converted=await (h2a.default as typeof heic2anyType)({blob:file,toType:'image/jpeg',quality:0.92})
+      return Array.isArray(converted)?converted[0]:converted
+    }
+    // Canvas conversion for other formats
+    return new Promise((res,rej)=>{
+      const img=new Image(),url=URL.createObjectURL(file)
+      img.onload=()=>{
+        const c=document.createElement('canvas')
+        c.width=img.naturalWidth;c.height=img.naturalHeight
+        c.getContext('2d')!.drawImage(img,0,0)
+        c.toBlob(b=>{URL.revokeObjectURL(url);b?res(b):rej(new Error('canvas fail'))},'image/jpeg',0.92)
+      }
+      img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('load fail'))}
+      img.src=url
+    })
+  }
+
   async function uploadListingPhotos(e:React.ChangeEvent<HTMLInputElement>){
     const files=e.target.files;if(!files||files.length===0)return
     setListingPhotoUp(true)
@@ -205,8 +227,9 @@ export default function Admin(){
     for(let i=0;i<files.length;i++){
       const file=files[i]
       try{
-        const path=`listings/${Date.now()}-${i}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`
-        const{error}=await getSupabase().storage.from('listing-photos').upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'})
+        const jpeg=await toJpegBlob(file)
+        const path=`listings/${Date.now()}-${i}.jpg`
+        const{error}=await getSupabase().storage.from('listing-photos').upload(path,jpeg,{upsert:true,contentType:'image/jpeg'})
         if(!error){
           const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path)
           uploaded.push(data.publicUrl)
@@ -282,7 +305,14 @@ export default function Admin(){
   async function saveProf(){
     const{data:ex}=await getSupabase().from('profile').select('id').limit(1).single()
     const payload={bio_text:bio,phone:pPhone,email:pEmail,photo_url:photoUrl}
-    ex?await getSupabase().from('profile').update(payload).eq('id',ex.id):await getSupabase().from('profile').insert([payload])
+    console.log('saving profile:',payload,'existing:',ex)
+    let error
+    if(ex){
+      ({error}=await getSupabase().from('profile').update(payload).eq('id',ex.id))
+    } else {
+      ({error}=await getSupabase().from('profile').insert([payload]))
+    }
+    if(error){console.error('profile save error:',error);alert('Save failed: '+error.message);return}
     setProfSaved(true);setTimeout(()=>setProfSaved(false),2000)
   }
 
@@ -454,12 +484,12 @@ export default function Admin(){
                   <input type="file" multiple accept="image/*" onChange={uploadListingPhotos} style={{display:'none'}}/>
                   <div style={{fontSize:'24px',marginBottom:'6px'}}>📷</div>
                   <div style={{fontSize:'13px',fontWeight:600,color:INK,fontFamily:F,marginBottom:'4px'}}>{listingPhotoUp?'Uploading...':'Tap to add photos'}</div>
-                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · As many as you like · First photo is the cover</div>
+                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · As many as you like · Use "Set Cover" to choose your main photo</div>
                 </label>
                 {form.photos.length>0&&(
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'8px'}}>
                     {form.photos.map((photoUrl,photoIdx)=>(
-                      <div key={photoIdx} style={{position:'relative',aspectRatio:'1',overflow:'hidden',background:PAPER,outline:photoIdx===0?`2px solid ${G}`:'none'}}>
+                      <div key={photoIdx} style={{position:'relative',aspectRatio:'3/2',overflow:'hidden',background:PAPER,outline:photoIdx===0?`2px solid ${G}`:'none'}}>
                         <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                         {photoIdx===0
                           ?<span style={{position:'absolute',top:'4px',left:'4px',background:G,color:'#fff',fontSize:'9px',fontWeight:700,padding:'2px 6px',fontFamily:F}}>COVER</span>
