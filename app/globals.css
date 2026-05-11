@@ -177,3 +177,15 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
   .carousel{height:260px}
   .modal-body{padding:1.5rem}
 }
+
+/* ADMIN MOBILE */
+@media(max-width:768px){
+  .admin-shell{grid-template-columns:1fr!important}
+  .admin-sidebar{display:none!important;position:fixed!important;top:0;left:0;width:80vw;max-width:280px;height:100vh;z-index:200}
+  .admin-sidebar.open{display:flex!important}
+  .admin-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199}
+  .admin-sidebar-overlay.open{display:block}
+  .admin-hamburger{display:flex!important}
+}
+.admin-hamburger{display:none;background:none;border:none;cursor:pointer;padding:4px;color:#111110;flex-direction:column;gap:4px;align-items:center;justify-content:center}
+.admin-hamburger span{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}

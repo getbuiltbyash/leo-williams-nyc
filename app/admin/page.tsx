@@ -60,8 +60,8 @@ const L={display:'block',fontSize:'10px',fontWeight:600,letterSpacing:'0.14em',t
 const PB={background:INK,color:'#fff',fontFamily:F,fontSize:'11px',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase' as const,padding:'8px 16px',border:'none',cursor:'pointer'} as React.CSSProperties
 const GB={background:'#fff',color:'#6B6B68',fontFamily:F,fontSize:'11px',padding:'8px 14px',border:`1px solid ${R}`,cursor:'pointer'} as React.CSSProperties
 
-function SBI({label,active,click,badge}:{label:string,active:boolean,click:()=>void,badge?:number}){
-  return <div onClick={click} style={{padding:'10px 20px',fontSize:'13px',fontWeight:active?700:400,color:'#fff',borderLeft:active?`3px solid ${G}`:'3px solid transparent',background:active?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',userSelect:'none',fontFamily:F}}>
+function SBI({label,active,click,badge,closeSidebar}:{label:string,active:boolean,click:()=>void,badge?:number,closeSidebar?:()=>void}){
+  return <div onClick={()=>{click();closeSidebar&&closeSidebar()}} style={{padding:'10px 20px',fontSize:'13px',fontWeight:active?700:400,color:'#fff',borderLeft:active?`3px solid ${G}`:'3px solid transparent',background:active?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',userSelect:'none',fontFamily:F}}>
     <span>{label}</span>
     {badge?<span style={{background:G,color:'#fff',fontSize:'11px',fontWeight:700,padding:'1px 7px',borderRadius:'10px'}}>{badge}</span>:null}
   </div>
@@ -84,6 +84,7 @@ function Field({label,children}:{label:string,children:React.ReactNode}){
 
 export default function Admin(){
   const [authed,setAuthed]=useState(false)
+  const [sidebarOpen,setSidebarOpen]=useState(false)
   const [loginEmail,setLoginEmail]=useState('')
   const [loginPw,setLoginPw]=useState('')
   const [loginErr,setLoginErr]=useState('')
@@ -111,6 +112,10 @@ export default function Admin(){
   const [listingPhotoUp,setListingPhotoUp]=useState(false)
   const [expandInq,setExpandInq]=useState<string|null>(null)
   const [inqNotes,setInqNotes]=useState<Record<string,string>>({})
+  const [inqNotesList,setInqNotesList]=useState<Record<string,{id:string,text:string,created_at:string}[]>>({})
+  const [noteSaved,setNoteSaved]=useState<Record<string,boolean>>({})
+  const [editingNote,setEditingNote]=useState<Record<string,string|null>>({})
+  const [editingNoteText,setEditingNoteText]=useState<Record<string,string>>({})
   const [descGen,setDescGen]=useState(false)
   const [hoodLoad,setHoodLoad]=useState(false)
   const [extraNotes,setExtraNotes]=useState('')
@@ -139,7 +144,17 @@ export default function Admin(){
     ])
     setListings(l||[]);setInquiries(i||[])
     setNewInq((i||[]).filter((x:Inquiry)=>x.status==='new').length)
-    const n:Record<string,string>={};(i||[]).forEach((x:Inquiry)=>{n[x.id]=x.notes||''});setInqNotes(n)
+    const n:Record<string,string>={}
+    const nl:Record<string,{id:string,text:string,created_at:string}[]>={}
+    ;(i||[]).forEach((x:Inquiry)=>{
+      n[x.id]=''
+      try{ nl[x.id]=JSON.parse(x.notes||'[]') }catch(e){ 
+        if(x.notes&&x.notes.trim()) nl[x.id]=[{id:'legacy',text:x.notes,created_at:x.created_at}]
+        else nl[x.id]=[]
+      }
+    })
+    setInqNotes(n)
+    setInqNotesList(nl)
     if(p){setBio(p.bio_text||'');setPPhone(p.phone||'');setPEmail(p.email||'');setPhotoUrl(p.photo_url||'/leo-headshot.jpg')}
   }
 
@@ -216,7 +231,41 @@ export default function Admin(){
   function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[]});setEditId(l.id||null);nav('add')}
 
   async function updInqStatus(id:string,status:string){await getSupabase().from('inquiries').update({status}).eq('id',id);loadAll()}
-  async function saveInqNotes(id:string){await getSupabase().from('inquiries').update({notes:inqNotes[id]||''}).eq('id',id)}
+  async function loadNotes(id:string, raw:string){
+    try{ return JSON.parse(raw||'[]') }catch(e){ 
+      // migrate old string notes to new format
+      if(raw&&raw.trim()) return [{id:Date.now().toString(),text:raw,created_at:new Date().toISOString()}]
+      return []
+    }
+  }
+
+  async function addNote(inqId:string){
+    const text=inqNotes[inqId]||''
+    if(!text.trim())return
+    const existing=inqNotesList[inqId]||[]
+    const newNote={id:Date.now().toString(),text:text.trim(),created_at:new Date().toISOString()}
+    const updated=[newNote,...existing]
+    const{error}=await getSupabase().from('inquiries').update({notes:JSON.stringify(updated)}).eq('id',inqId)
+    if(!error){
+      setInqNotesList(p=>({...p,[inqId]:updated}))
+      setInqNotes(p=>({...p,[inqId]:''}))
+      setNoteSaved(p=>({...p,[inqId]:true}))
+      setTimeout(()=>setNoteSaved(p=>({...p,[inqId]:false})),2000)
+    }
+  }
+
+  async function deleteNote(inqId:string, noteId:string){
+    const updated=(inqNotesList[inqId]||[]).filter(n=>n.id!==noteId)
+    await getSupabase().from('inquiries').update({notes:JSON.stringify(updated)}).eq('id',inqId)
+    setInqNotesList(p=>({...p,[inqId]:updated}))
+  }
+
+  async function updateNote(inqId:string, noteId:string, text:string){
+    const updated=(inqNotesList[inqId]||[]).map(n=>n.id===noteId?{...n,text}:n)
+    await getSupabase().from('inquiries').update({notes:JSON.stringify(updated)}).eq('id',inqId)
+    setInqNotesList(p=>({...p,[inqId]:updated}))
+    setEditingNote(p=>({...p,[inqId]:null}))
+  }
 
   async function genBio(){
     if(!bQ1&&!bQ2&&!bQ3)return;setBioGen(true)
@@ -263,23 +312,26 @@ export default function Admin(){
   )
 
   return(
-    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',fontFamily:F}}>
+    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',fontFamily:F}} className="admin-shell">
+
+      {/* MOBILE OVERLAY */}
+      <div className={`admin-sidebar-overlay${sidebarOpen?' open':''}`} onClick={()=>setSidebarOpen(false)}/>
 
       {/* SIDEBAR */}
-      <div style={{background:INK,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh',overflowY:'auto'}}>
+      <div style={{background:INK,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh',overflowY:'auto'}} className={`admin-sidebar${sidebarOpen?' open':''}`}>
         <div style={{padding:'20px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontFamily:SF,fontSize:'15px',fontWeight:400,color:'#fff',marginBottom:'3px'}}>Leo <em style={{fontStyle:'italic',color:G}}>Williams</em></div>
           <div style={{fontSize:'10px',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)',fontFamily:F}}>Admin Dashboard</div>
         </div>
         <div style={{flex:1,paddingTop:'8px'}}>
-          <SBI label="Overview" active={tab==='dashboard'} click={()=>nav('dashboard')}/>
+          <SBI label="Overview" active={tab==='dashboard'} click={()=>nav('dashboard')} closeSidebar={()=>setSidebarOpen(false)}/>
           <SBS label="Listings"/>
-          <SBI label="Add New Listing" active={tab==='add'} click={()=>{setForm(EMPTY);setEditId(null);setExtraNotes('');nav('add')}}/>
-          <SBI label="Manage Listings" active={tab==='manage'} click={()=>{setMFilter('all');nav('manage')}}/>
+          <SBI label="Add New Listing" active={tab==='add'} click={()=>{setForm(EMPTY);setEditId(null);setExtraNotes('');nav('add')}} closeSidebar={()=>setSidebarOpen(false)}/>
+          <SBI label="Manage Listings" active={tab==='manage'} click={()=>{setMFilter('all');nav('manage')}} closeSidebar={()=>setSidebarOpen(false)}/>
           <SBS label="Inquiries"/>
-          <SBI label="All Inquiries" active={tab==='inquiries'} click={()=>nav('inquiries')} badge={newInq||undefined}/>
+          <SBI label="All Inquiries" active={tab==='inquiries'} click={()=>nav('inquiries')} badge={newInq||undefined} closeSidebar={()=>setSidebarOpen(false)}/>
           <SBS label="Profile"/>
-          <SBI label="My Bio & Story" active={tab==='bio'} click={()=>nav('bio')}/>
+          <SBI label="My Bio & Story" active={tab==='bio'} click={()=>nav('bio')} closeSidebar={()=>setSidebarOpen(false)}/>
         </div>
         <div style={{padding:'16px 20px',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span style={{fontSize:'12px',color:'rgba(255,255,255,0.35)',fontFamily:F}}>Leo Williams</span>
@@ -294,6 +346,7 @@ export default function Admin(){
       <div style={{background:PAPER,overflow:'auto'}}>
         <div style={{background:'#fff',borderBottom:`1px solid ${R}`,padding:'0 2rem',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
           <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+            <button className="admin-hamburger" onClick={()=>setSidebarOpen(p=>!p)}><span/><span/><span/></button>
             {tabHist.length>0&&<button onClick={back} style={{...GB,padding:'4px 12px',fontSize:'12px'}}>← Back</button>}
             <span style={{fontSize:'14px',fontWeight:600,color:INK,fontFamily:F}}>{tabLabel}</span>
           </div>
@@ -308,7 +361,7 @@ export default function Admin(){
           {/* DASHBOARD */}
           {tab==='dashboard'&&(
             <div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'1rem',marginBottom:'2rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'1rem',marginBottom:'2rem'}}>
                 {[
                   {label:'Live Listings',value:live,click:()=>{setMFilter('live');nav('manage')}},
                   {label:'Drafts',value:draft,click:()=>{setMFilter('draft');nav('manage')}},
@@ -362,7 +415,7 @@ export default function Admin(){
               {/* BASICS */}
               <Card>
                 <CardTitle title="Listing Basics"/>
-                <Row>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:'1rem'}}>
                   <Field label="Monthly Rent">
                     <input value={form.price} onChange={e=>setF('price',e.target.value)} {...normBlur('price',normalizePrice)} placeholder="e.g. 3400 or $3,400" style={I}/>
                   </Field>
@@ -381,7 +434,7 @@ export default function Admin(){
                   <Field label="Badge (optional)">
                     <input value={form.badge} onChange={e=>setF('badge',e.target.value)} placeholder="New, Featured, Just Listed..." style={I}/>
                   </Field>
-                </Row>
+                </div>
                 <div style={{marginTop:'1rem',display:'flex',alignItems:'center',gap:'8px'}}>
                   <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}}/>
                   <label htmlFor="op_paid" style={{fontSize:'13px',color:INK,cursor:'pointer',fontFamily:F}}>Owner Paid — No Fee to tenant (shows "No Fee" badge on site)</label>
@@ -398,7 +451,7 @@ export default function Admin(){
                   <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · As many as you like · First photo is the cover</div>
                 </label>
                 {form.photos.length>0&&(
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'8px'}}>
                     {form.photos.map((url,idx)=>(
                       <div key={idx} style={{position:'relative',aspectRatio:'1',overflow:'hidden',background:PAPER,outline:idx===0?`2px solid ${G}`:'none'}}>
                         <img src={url} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
@@ -417,7 +470,7 @@ export default function Admin(){
               {/* AMENITIES */}
               <Card>
                 <CardTitle title="Amenities — tap everything that applies"/>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px',marginBottom:'1rem'}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:'8px',marginBottom:'1rem'}}>
                   {AMENITIES.map(a=>{
                     const on=form.amenities.includes(a)
                     return <button key={a} onClick={()=>toggleAm(a)} type="button" style={{padding:'8px 10px',border:`1px solid ${on?BL:R}`,background:on?'#EEF2F8':OFF,color:on?BL:INK,fontSize:'12px',fontWeight:on?600:400,fontFamily:F,cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>{a}</button>
@@ -563,9 +616,42 @@ export default function Admin(){
                           </div>
 
                           {/* NOTES */}
-                          <label style={L}>Internal Notes</label>
-                          <textarea value={inqNotes[inq.id]||''} onChange={e=>setInqNotes(p=>({...p,[inq.id]:e.target.value}))} placeholder="Add private notes about this inquiry..." rows={3} style={{...I,resize:'vertical',marginBottom:'8px'}}/>
-                          <button onClick={()=>saveInqNotes(inq.id)} style={{...PB,fontSize:'11px',padding:'6px 14px'}}>Save Notes</button>
+                          <div style={{borderTop:`1px solid ${R}`,paddingTop:'1rem',marginTop:'0.5rem'}}>
+                            <div style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'10px',fontFamily:F}}>Internal Notes</div>
+                            
+                            {/* Existing notes */}
+                            {(inqNotesList[inq.id]||[]).length>0&&(
+                              <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
+                                {(inqNotesList[inq.id]||[]).map(note=>(
+                                  <div key={note.id} style={{background:OFF,border:`1px solid ${R}`,padding:'10px 12px'}}>
+                                    {editingNote[inq.id]===note.id
+                                      ?<div>
+                                        <textarea value={editingNoteText[note.id]||note.text} onChange={e=>setEditingNoteText(p=>({...p,[note.id]:e.target.value}))} rows={3} style={{...I,fontSize:'12px',marginBottom:'6px',resize:'vertical'}}/>
+                                        <div style={{display:'flex',gap:'6px'}}>
+                                          <button onClick={()=>updateNote(inq.id,note.id,editingNoteText[note.id]||note.text)} style={{...PB,fontSize:'10px',padding:'4px 10px'}}>Save</button>
+                                          <button onClick={()=>setEditingNote(p=>({...p,[inq.id]:null}))} style={{...GB,fontSize:'10px',padding:'4px 10px'}}>Cancel</button>
+                                        </div>
+                                      </div>
+                                      :<div>
+                                        <div style={{fontSize:'13px',color:INK,fontFamily:F,lineHeight:1.6,marginBottom:'6px'}}>{note.text}</div>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                          <div style={{fontSize:'10px',color:'#9B9B98',fontFamily:F}}>{new Date(note.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+                                          <div style={{display:'flex',gap:'8px'}}>
+                                            <button onClick={()=>{setEditingNote(p=>({...p,[inq.id]:note.id}));setEditingNoteText(p=>({...p,[note.id]:note.text}))}} style={{fontSize:'11px',color:BL,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Edit</button>
+                                            <button onClick={()=>deleteNote(inq.id,note.id)} style={{fontSize:'11px',color:DNG,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Delete</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    }
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add new note */}
+                            <textarea value={inqNotes[inq.id]||''} onChange={e=>setInqNotes(p=>({...p,[inq.id]:e.target.value}))} placeholder="Add a note..." rows={2} style={{...I,resize:'vertical',marginBottom:'6px',fontSize:'13px'}}/>
+                            <button onClick={()=>addNote(inq.id)} style={{...PB,fontSize:'11px',padding:'6px 14px'}}>{noteSaved[inq.id]?'✓ Note Added':'Add Note'}</button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -578,7 +664,7 @@ export default function Admin(){
 
           {/* BIO */}
           {tab==='bio'&&(
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.5rem'}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:'1.5rem'}}>
               <div style={{display:'flex',flexDirection:'column',gap:'1.5rem'}}>
                 <Card>
                   <CardTitle title="Profile Photo"/>
