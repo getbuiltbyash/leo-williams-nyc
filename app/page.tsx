@@ -46,6 +46,9 @@ export default function Home() {
   const [formSent, setFormSent] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [searchHood, setSearchHood] = useState('Any')
+  const [selectedHoods, setSelectedHoods] = useState<string[]>([])
+  const [selectedBeds, setSelectedBeds] = useState<string[]>([])
+  const [showFilter, setShowFilter] = useState(false)
   const [searchBeds, setSearchBeds] = useState('Any')
   const [searchMin, setSearchMin] = useState('No min')
   const [searchMax, setSearchMax] = useState('No max')
@@ -85,6 +88,36 @@ export default function Home() {
   async function loadProfile() {
     const { data } = await getSupabase().from('profile').select('*').limit(1).single()
     if (data) setProfile(data)
+  }
+
+  function toggleBed(bed: string) {
+    setSelectedBeds(p => p.includes(bed) ? p.filter(b => b !== bed) : [...p, bed])
+  }
+
+  function toggleHood(hood: string) {
+    setSelectedHoods(p => p.includes(hood) ? p.filter(h => h !== hood) : [...p, hood])
+  }
+
+  function applyFilter() {
+    const priceMap: Record<string,number> = {'No min':0,'$1,500/mo':1500,'$2,000/mo':2000,'$2,500/mo':2500,'$3,500/mo':3500}
+    const maxMap: Record<string,number> = {'No max':99999,'$2,500/mo':2500,'$3,500/mo':3500,'$5,000/mo':5000,'$7,500+':7500}
+    const minP = priceMap[searchMin] || 0
+    const maxP = maxMap[searchMax] || 99999
+    const result = listings.filter(l => {
+      const bv = bedsLabel(l.beds)
+      const price = parseInt((l.price||'0').replace(/[^0-9]/g,'')) || 0
+      const hoodMatch = selectedHoods.length === 0 || selectedHoods.includes(l.neighborhood)
+      const bedsMatch = selectedBeds.length === 0 ||
+        (selectedBeds.includes('Studio') && bv === 'Studio') ||
+        (selectedBeds.includes('1 Bed') && bv === '1') ||
+        (selectedBeds.includes('2 Bed') && bv === '2') ||
+        (selectedBeds.includes('3+ Bed') && parseInt(bv) >= 3)
+      const priceMatch = price >= minP && price <= maxP
+      return hoodMatch && bedsMatch && priceMatch
+    })
+    setFiltered(result)
+    setShowFilter(false)
+    listingsRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   function filterListings() {
@@ -202,8 +235,69 @@ export default function Home() {
             <div className="sec-label">Featured Listings</div>
             <h2 className="sec-title">Current Availability</h2>
           </div>
-          <button className="link-more" onClick={()=>{ setFiltered(listings); listingsRef.current?.scrollIntoView({behavior:'smooth'}) }}>View all listings →</button>
+          <div style={{display:'flex',gap:'0.75rem',alignItems:'center',flexWrap:'wrap'}}>
+            <button className="link-more" onClick={()=>{setFiltered(listings);setSelectedHoods([]);listingsRef.current?.scrollIntoView({behavior:'smooth'})}}>View All</button>
+            <button className="link-more" onClick={()=>setShowFilter(p=>!p)} style={{background:'var(--ink)',color:'var(--white)',padding:'0.45rem 1rem',fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',border:'none',cursor:'pointer',fontFamily:'var(--sans)'}}>
+              {showFilter ? 'Close' : `Filter Listings${selectedHoods.length>0?' ('+selectedHoods.length+')':''}`}
+            </button>
+          </div>
         </div>
+
+        {/* FILTER PANEL */}
+        {showFilter && (
+          <div style={{background:'var(--off)',border:'1px solid var(--rule)',padding:'1.5rem',marginBottom:'1.5rem'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'1.5rem',marginBottom:'1.25rem'}}>
+              {/* NEIGHBORHOODS */}
+              <div>
+                <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Neighborhood</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'200px',overflowY:'auto'}}>
+                  {Array.from(new Set(listings.map(l=>l.neighborhood))).sort().map(hood=>(
+                    <label key={hood} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)'}}>
+                      <input type="checkbox" checked={selectedHoods.includes(hood)} onChange={()=>toggleHood(hood)} style={{width:'15px',height:'15px',accentColor:'var(--blue)',cursor:'pointer'}}/>
+                      {hood}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {/* BEDROOMS */}
+              <div>
+                <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Bedrooms</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                  {['Studio','1 Bed','2 Bed','3+ Bed'].map(b=>(
+                    <label key={b} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)'}}>
+                      <input type="checkbox" checked={selectedBeds.includes(b)} onChange={()=>toggleBed(b)} style={{width:'15px',height:'15px',accentColor:'var(--blue)',cursor:'pointer'}}/>
+                      {b}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {/* PRICE */}
+              <div>
+                <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Price Range</div>
+                <div style={{marginBottom:'8px'}}>
+                  <div style={{fontSize:'0.6rem',color:'var(--ink4)',marginBottom:'4px',fontFamily:'var(--sans)'}}>Min</div>
+                  <select value={searchMin} onChange={e=>setSearchMin(e.target.value)} style={{width:'100%',padding:'6px 8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.78rem',outline:'none'}}>
+                    <option>No min</option><option>$1,500/mo</option><option>$2,000/mo</option><option>$2,500/mo</option><option>$3,500/mo</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:'0.6rem',color:'var(--ink4)',marginBottom:'4px',fontFamily:'var(--sans)'}}>Max</div>
+                  <select value={searchMax} onChange={e=>setSearchMax(e.target.value)} style={{width:'100%',padding:'6px 8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.78rem',outline:'none'}}>
+                    <option>No max</option><option>$2,500/mo</option><option>$3,500/mo</option><option>$5,000/mo</option><option>$7,500+</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:'8px',borderTop:'1px solid var(--rule)',paddingTop:'1rem'}}>
+              <button onClick={applyFilter} style={{background:'var(--ink)',color:'var(--white)',border:'none',padding:'0.7rem 1.5rem',fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',cursor:'pointer',fontFamily:'var(--sans)'}}>
+                Apply Filters
+              </button>
+              <button onClick={()=>{setSelectedHoods([]);setSelectedBeds([]);setSearchMin('No min');setSearchMax('No max');setFiltered(listings);setShowFilter(false)}} style={{background:'var(--white)',color:'var(--ink3)',border:'1px solid var(--rule)',padding:'0.7rem 1.25rem',fontSize:'0.6rem',cursor:'pointer',fontFamily:'var(--sans)'}}>
+                Clear All
+              </button>
+            </div>
+          </div>
+        )}
         <div className="listings-grid">
           {loading ? (
             <div style={{gridColumn:'1/-1',textAlign:'center',padding:'3rem',color:'var(--ink4)',fontSize:'0.78rem'}}>Loading listings...</div>
@@ -325,11 +419,11 @@ export default function Home() {
           <div className="cways">
             <div className="cway">
               <div className="cway-icon">📞</div>
-              <span>{profile.phone && profile.phone.trim() ? <a href={`tel:${profile.phone}`}>{profile.phone}</a> : 'Update in admin'}</span>
+              <span>{profile.phone && profile.phone.trim() ? <a href={`tel:${profile.phone}`}>{profile.phone}</a> : 'Available upon request'}</span>
             </div>
             <div className="cway">
               <div className="cway-icon">✉</div>
-              <span>{profile.email && profile.email.trim() ? <a href={`mailto:${profile.email}`}>{profile.email}</a> : 'Update in admin'}</span>
+              <span>{profile.email && profile.email.trim() ? <a href={`mailto:${profile.email}`}>{profile.email}</a> : 'Available upon request'}</span>
             </div>
             <div className="cway">
               <div className="cway-icon">🏢</div>

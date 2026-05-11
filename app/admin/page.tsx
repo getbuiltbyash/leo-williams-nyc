@@ -373,11 +373,13 @@ export default function Admin(){
           <SBS label="Profile"/>
           <SBI label="My Bio & Story" active={tab==='bio'} click={()=>nav('bio')} closeSidebar={()=>setSidebarOpen(false)}/>
         </div>
-        <div style={{padding:'16px 20px',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:'12px',color:'rgba(255,255,255,0.35)',fontFamily:F}}>Leo Williams</span>
-          <div style={{display:'flex',gap:'16px'}}>
-            <a href="/" target="_blank" style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',textDecoration:'none'}}>Site ↗</a>
-            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.35)',fontSize:'11px',cursor:'pointer',padding:0,fontFamily:F}}>Sign Out</button>
+        <div style={{padding:'12px 20px',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <a href="/" target="_blank" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',padding:'8px',background:'rgba(255,255,255,0.08)',color:'#fff',textDecoration:'none',fontSize:'12px',fontWeight:600,fontFamily:F,marginBottom:'8px',border:'1px solid rgba(255,255,255,0.12)'}}>
+            View Live Site ↗
+          </a>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',fontFamily:F}}>Leo Williams</span>
+            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.3)',fontSize:'11px',cursor:'pointer',padding:0,fontFamily:F}}>Sign Out</button>
           </div>
         </div>
       </div>

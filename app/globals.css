@@ -190,3 +190,10 @@ footer{background:var(--ink);border-top:3px solid var(--cream);padding:2.25rem 4
   .admin-hamburger{display:flex!important}
   .admin-stats-grid{grid-template-columns:repeat(2,1fr)!important}
 }
+
+/* MOBILE FIXES */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(max-width:900px){
+  .nav-logo-name{white-space:nowrap!important}
+  .nav-logo em{white-space:nowrap!important}
+}
