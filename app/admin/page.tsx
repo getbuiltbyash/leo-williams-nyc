@@ -40,26 +40,16 @@ const EMPTY: Listing = {
   amenities:'',photos:[],status:'draft',badge:''
 }
 
-const SB: React.CSSProperties = {fontFamily:"'Montserrat',system-ui,sans-serif"}
-const gold = '#B8975A'
-const ink = '#111110'
-const rule = '#E2E0DA'
-const off = '#F8F7F4'
-const paper = '#F2F1ED'
-const blue = '#1B3A6B'
-const danger = '#C0392B'
+const GOLD='#B8975A', INK='#111110', RULE='#E2E0DA', OFF='#F8F7F4'
+const PAPER='#F2F1ED', BLUE='#1B3A6B', DANGER='#C0392B'
+const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif"
+const SERIF = "'Cormorant Garamond', Georgia, serif"
 
-function NavItem({label, active, onClick, badge}: {label:string, active:boolean, onClick:()=>void, badge?:number}) {
-  return (
-    <a href="#" onClick={e=>{e.preventDefault();onClick()}} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.7rem 1.25rem',fontSize:'0.72rem',fontWeight:active?600:400,color:active?'#fff':'rgba(255,255,255,0.55)',textDecoration:'none',borderLeft:`2px solid ${active?gold:'transparent'}`,background:active?'rgba(255,255,255,0.08)':'transparent',...SB}}>
-      <span>{label}</span>
-      {badge ? <span style={{background:gold,color:'#fff',fontSize:'0.55rem',fontWeight:600,padding:'0.15rem 0.45rem',borderRadius:'10px'}}>{badge}</span> : null}
-    </a>
-  )
-}
-
-function SectionLabel({label}: {label:string}) {
-  return <div style={{padding:'0.75rem 1.25rem 0.25rem',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.2em',textTransform:'uppercase' as const,color:'rgba(255,255,255,0.2)',...SB}}>{label}</div>
+const s = {
+  inp: {width:'100%',background:OFF,border:`1px solid ${RULE}`,color:INK,fontFamily:FONT,fontSize:'0.8rem',padding:'0.6rem 0.85rem',outline:'none',boxSizing:'border-box'} as React.CSSProperties,
+  label: {display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem',fontFamily:FONT} as React.CSSProperties,
+  btn: {background:INK,color:'#fff',fontFamily:FONT,fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',padding:'0.7rem 1.4rem',border:'none',cursor:'pointer'} as React.CSSProperties,
+  btnGhost: {background:'#fff',color:'#6B6B68',fontFamily:FONT,fontSize:'0.6rem',padding:'0.7rem 1.2rem',border:`1px solid ${RULE}`,cursor:'pointer'} as React.CSSProperties,
 }
 
 export default function Admin() {
@@ -69,6 +59,7 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [tab, setTab] = useState('dashboard')
+  const [tabHistory, setTabHistory] = useState<string[]>([])
   const [listings, setListings] = useState<Listing[]>([])
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [newInquiries, setNewInquiries] = useState(0)
@@ -76,6 +67,7 @@ export default function Admin() {
   const [editId, setEditId] = useState<string|null>(null)
   const [saveStatus, setSaveStatus] = useState('')
   const [manageFilter, setManageFilter] = useState('all')
+  const [inquiryFilter, setInquiryFilter] = useState('all')
   const [bio, setBio] = useState('')
   const [phone, setPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -84,10 +76,9 @@ export default function Admin() {
   const [bioQ2, setBioQ2] = useState('')
   const [bioQ3, setBioQ3] = useState('')
   const [bioGenerating, setBioGenerating] = useState(false)
-  const [bioSaved, setBioSaved] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
   const [expandedInquiry, setExpandedInquiry] = useState<string|null>(null)
-  const [inquiryFilter, setInquiryFilter] = useState('all')
   const [inquiryNotes, setInquiryNotes] = useState<Record<string,string>>({})
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -97,15 +88,27 @@ export default function Admin() {
     })
   }, [])
 
+  function navTo(t: string) {
+    setTabHistory(prev => [...prev, tab])
+    setTab(t)
+  }
+
+  function goBack() {
+    setTabHistory(prev => {
+      const h = [...prev]
+      const last = h.pop()
+      if (last) setTab(last)
+      return h
+    })
+  }
+
   async function doLogin(e: React.FormEvent) {
     e.preventDefault()
-    setLoginLoading(true)
-    setLoginError('')
+    setLoginLoading(true); setLoginError('')
     const { error } = await getSupabase().auth.signInWithPassword({ email, password })
     setLoginLoading(false)
     if (error) { setLoginError('Incorrect email or password.'); return }
-    setAuthed(true)
-    loadAll()
+    setAuthed(true); loadAll()
   }
 
   async function loadAll() {
@@ -120,35 +123,19 @@ export default function Admin() {
     const notes: Record<string,string> = {}
     ;(i||[]).forEach((x:Inquiry) => { notes[x.id] = x.notes || '' })
     setInquiryNotes(notes)
-    if (p) {
-      setBio(p.bio_text || '')
-      setPhone(p.phone || '')
-      setContactEmail(p.email || '')
-      setPhotoUrl(p.photo_url || '')
-    }
+    if (p) { setBio(p.bio_text||''); setPhone(p.phone||''); setContactEmail(p.email||''); setPhotoUrl(p.photo_url||'') }
   }
 
   async function saveListing(status: string) {
     setSaveStatus('saving')
-    const payload = {
-      ...form,
-      status,
-      amenities: typeof form.amenities === 'string'
-        ? form.amenities.split(',').map((a:string) => a.trim()).filter(Boolean)
-        : form.amenities,
-    }
-    let error
-    if (editId) {
-      ({ error } = await getSupabase().from('listings').update(payload).eq('id', editId))
-    } else {
-      ({ error } = await getSupabase().from('listings').insert([payload]))
-    }
+    const payload = { ...form, status, amenities: typeof form.amenities==='string' ? form.amenities.split(',').map(a=>a.trim()).filter(Boolean) : form.amenities }
+    const { error } = editId
+      ? await getSupabase().from('listings').update(payload).eq('id', editId)
+      : await getSupabase().from('listings').insert([payload])
     if (error) { setSaveStatus('error'); return }
     setSaveStatus('saved')
-    setForm(EMPTY)
-    setEditId(null)
+    setTimeout(() => { setSaveStatus(''); setForm(EMPTY); setEditId(null); setTab('manage') }, 1200)
     loadAll()
-    setTimeout(() => { setSaveStatus(''); setTab('manage') }, 1200)
   }
 
   async function deleteListing(id: string) {
@@ -158,9 +145,9 @@ export default function Admin() {
   }
 
   function editListing(l: Listing) {
-    setForm({ ...l, amenities: Array.isArray(l.amenities) ? l.amenities.join(', ') : l.amenities || '' })
-    setEditId(l.id || null)
-    setTab('add')
+    setForm({ ...l, amenities: Array.isArray(l.amenities) ? l.amenities.join(', ') : l.amenities||'' })
+    setEditId(l.id||null)
+    navTo('add')
   }
 
   async function updateInquiryStatus(id: string, status: string) {
@@ -169,18 +156,14 @@ export default function Admin() {
   }
 
   async function saveNotes(id: string) {
-    await getSupabase().from('inquiries').update({ notes: inquiryNotes[id] || '' }).eq('id', id)
+    await getSupabase().from('inquiries').update({ notes: inquiryNotes[id]||'' }).eq('id', id)
   }
 
   async function generateBio() {
     if (!bioQ1 && !bioQ2 && !bioQ3) return
     setBioGenerating(true)
     try {
-      const res = await fetch('/api/generate-bio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q1: bioQ1, q2: bioQ2, q3: bioQ3 })
-      })
+      const res = await fetch('/api/generate-bio', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({q1:bioQ1,q2:bioQ2,q3:bioQ3}) })
       const data = await res.json()
       setBio(data.bio)
     } catch(e) { console.error(e) }
@@ -189,103 +172,109 @@ export default function Admin() {
 
   async function saveProfile() {
     const { data: existing } = await getSupabase().from('profile').select('id').limit(1).single()
-    const payload = { bio_text: bio, phone, email: contactEmail, photo_url: photoUrl }
-    if (existing) {
-      await getSupabase().from('profile').update(payload).eq('id', existing.id)
-    } else {
-      await getSupabase().from('profile').insert([payload])
-    }
-    setBioSaved(true)
-    setTimeout(() => setBioSaved(false), 2000)
+    const payload = { bio_text:bio, phone, email:contactEmail, photo_url:photoUrl }
+    existing ? await getSupabase().from('profile').update(payload).eq('id', existing.id) : await getSupabase().from('profile').insert([payload])
+    setProfileSaved(true); setTimeout(()=>setProfileSaved(false), 2000)
   }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0]; if (!file) return
     setPhotoUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `profile/leo-photo.${ext}`
-    const { error } = await getSupabase().storage.from('listing-photos').upload(path, file, { upsert: true })
+    const { error } = await getSupabase().storage.from('listing-photos').upload(`profile/leo-photo.${ext}`, file, { upsert:true })
     if (error) { console.error(error); setPhotoUploading(false); return }
-    const { data } = getSupabase().storage.from('listing-photos').getPublicUrl(path)
-    setPhotoUrl(data.publicUrl)
-    setPhotoUploading(false)
+    const { data } = getSupabase().storage.from('listing-photos').getPublicUrl(`profile/leo-photo.${ext}`)
+    setPhotoUrl(data.publicUrl); setPhotoUploading(false)
   }
 
-  const filteredListings = listings.filter(l => {
-    if (manageFilter === 'all') return true
-    if (manageFilter === 'live') return l.status === 'live'
-    if (manageFilter === 'draft') return l.status === 'draft'
-    if (manageFilter === 'rented') return l.status === 'rented'
-    return true
-  })
+  const filteredListings = listings.filter(l => manageFilter==='all'||l.status===manageFilter)
+  const filteredInquiries = inquiries.filter(i => inquiryFilter==='all'||i.inquiry_type===inquiryFilter)
+  const live=listings.filter(l=>l.status==='live').length
+  const draft=listings.filter(l=>l.status==='draft').length
+  const rented=listings.filter(l=>l.status==='rented').length
 
-  const live = listings.filter(l => l.status === 'live').length
-  const draft = listings.filter(l => l.status === 'draft').length
-  const rented = listings.filter(l => l.status === 'rented').length
-
-  const inp = {width:'100%',background:off,border:`1px solid ${rule}`,color:ink,fontFamily:"'Montserrat',system-ui,sans-serif",fontSize:'0.8rem',padding:'0.6rem 0.85rem',outline:'none'} as React.CSSProperties
+  const tabLabel = tab==='dashboard'?'Overview':tab==='add'?editId?'Edit Listing':'Add New Listing':tab==='manage'?'Manage Listings':tab==='inquiries'?'Inquiries':'My Bio & Story'
 
   if (!authed) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:ink,padding:'1rem',...SB}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:INK,padding:'1rem',fontFamily:FONT}}>
       <div style={{background:'#fff',padding:'2.5rem',width:'100%',maxWidth:'380px'}}>
-        <div style={{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:'1.3rem',fontWeight:300,marginBottom:'0.3rem'}}>Leo <em style={{fontStyle:'italic',color:gold}}>Williams</em></div>
-        <div style={{fontSize:'0.6rem',fontWeight:500,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'2rem'}}>Admin Dashboard</div>
+        <div style={{fontFamily:SERIF,fontSize:'1.3rem',fontWeight:300,marginBottom:'0.3rem'}}>Leo <em style={{fontStyle:'italic',color:GOLD}}>Williams</em></div>
+        <div style={{fontSize:'0.6rem',fontWeight:500,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'2rem',fontFamily:FONT}}>Admin Dashboard</div>
         <form onSubmit={doLogin}>
-          <div style={{marginBottom:'1rem'}}>
-            <label style={{display:'block',fontSize:'0.55rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#6B6B68',marginBottom:'0.3rem'}}>Email</label>
-            <input type="email" required placeholder="leo@leowilliamsnyc.com" value={email} onChange={e=>setEmail(e.target.value)} style={inp} />
-          </div>
-          <div style={{marginBottom:'1rem'}}>
-            <label style={{display:'block',fontSize:'0.55rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#6B6B68',marginBottom:'0.3rem'}}>Password</label>
-            <input type="password" required placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} style={inp} />
-          </div>
-          {loginError && <div style={{fontSize:'0.68rem',color:danger,marginBottom:'0.5rem'}}>{loginError}</div>}
-          <button type="submit" disabled={loginLoading} style={{width:'100%',background:ink,color:'#fff',...SB,fontSize:'0.62rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',padding:'0.85rem',border:'none',cursor:'pointer',marginTop:'0.25rem'}}>
-            {loginLoading ? 'Signing in...' : 'Sign In'}
-          </button>
+          <div style={{marginBottom:'1rem'}}><label style={s.label}>Email</label><input type="email" required placeholder="leo@leowilliamsnyc.com" value={email} onChange={e=>setEmail(e.target.value)} style={s.inp} /></div>
+          <div style={{marginBottom:'1rem'}}><label style={s.label}>Password</label><input type="password" required placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} style={s.inp} /></div>
+          {loginError && <div style={{fontSize:'0.68rem',color:DANGER,marginBottom:'0.5rem',fontFamily:FONT}}>{loginError}</div>}
+          <button type="submit" disabled={loginLoading} style={{...s.btn,width:'100%',marginTop:'0.25rem'}}>{loginLoading?'Signing in...':'Sign In'}</button>
         </form>
       </div>
     </div>
   )
 
   return (
-    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',...SB}}>
+    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',fontFamily:FONT}}>
       {/* SIDEBAR */}
-      <aside style={{background:ink,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh'}}>
-        <div style={{padding:'1.25rem 1.25rem 1rem',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-          <div style={{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:'1rem',fontWeight:300,color:'#fff'}}>Leo <em style={{fontStyle:'italic',color:gold}}>Williams</em></div>
-          <div style={{fontSize:'0.52rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginTop:'3px'}}>Admin Dashboard</div>
+      <aside style={{background:INK,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh',overflowY:'auto'}}>
+        {/* LOGO */}
+        <div style={{padding:'1.25rem',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{fontFamily:SERIF,fontSize:'1.05rem',fontWeight:300,color:'#fff',marginBottom:'3px'}}>Leo <em style={{fontStyle:'italic',color:GOLD}}>Williams</em></div>
+          <div style={{fontSize:'0.52rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',fontFamily:FONT}}>Admin Dashboard</div>
         </div>
-        <nav style={{flex:1,paddingTop:'0.5rem',overflowY:'auto'}}>
-          <NavItem label="Overview" active={tab==='dashboard'} onClick={()=>setTab('dashboard')} />
-          <SectionLabel label="Listings" />
-          <NavItem label="Add New Listing" active={tab==='add'} onClick={()=>{setForm(EMPTY);setEditId(null);setTab('add')}} />
-          <NavItem label="Manage Listings" active={tab==='manage'} onClick={()=>{setManageFilter('all');setTab('manage')}} />
-          <SectionLabel label="Inquiries" />
-          <NavItem label="Inquiries" active={tab==='inquiries'} onClick={()=>setTab('inquiries')} badge={newInquiries||undefined} />
-          <SectionLabel label="Profile" />
-          <NavItem label="My Bio & Story" active={tab==='bio'} onClick={()=>setTab('bio')} />
+
+        {/* NAV */}
+        <nav style={{flex:1,paddingTop:'0.5rem'}}>
+          {/* Overview */}
+          <a href="#" onClick={e=>{e.preventDefault();navTo('dashboard')}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='dashboard'?600:400,color:tab==='dashboard'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='dashboard'?GOLD:'transparent'}`,background:tab==='dashboard'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
+            Overview
+          </a>
+
+          {/* LISTINGS section */}
+          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Listings</div>
+          {[
+            {id:'add', label: editId?'Edit Listing':'Add New Listing'},
+            {id:'manage', label:'Manage Listings'},
+          ].map(item=>(
+            <a key={item.id} href="#" onClick={e=>{e.preventDefault();if(item.id==='add'){setForm(EMPTY);setEditId(null);}navTo(item.id)}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab===item.id?600:400,color:tab===item.id?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab===item.id?GOLD:'transparent'}`,background:tab===item.id?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
+              {item.label}
+            </a>
+          ))}
+
+          {/* INQUIRIES section */}
+          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Inquiries</div>
+          <a href="#" onClick={e=>{e.preventDefault();navTo('inquiries')}} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='inquiries'?600:400,color:tab==='inquiries'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='inquiries'?GOLD:'transparent'}`,background:tab==='inquiries'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
+            <span>All Inquiries</span>
+            {newInquiries>0 && <span style={{background:GOLD,color:'#fff',fontSize:'0.52rem',fontWeight:700,padding:'0.1rem 0.45rem',borderRadius:'10px',fontFamily:FONT}}>{newInquiries}</span>}
+          </a>
+
+          {/* PROFILE section */}
+          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Profile</div>
+          <a href="#" onClick={e=>{e.preventDefault();navTo('bio')}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='bio'?600:400,color:tab==='bio'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='bio'?GOLD:'transparent'}`,background:tab==='bio'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
+            My Bio & Story
+          </a>
         </nav>
-        <div style={{padding:'1rem 1.25rem',borderTop:'1px solid rgba(255,255,255,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div style={{fontSize:'0.65rem',color:'rgba(255,255,255,0.4)'}}>Leo Williams</div>
+
+        {/* FOOTER */}
+        <div style={{padding:'1rem 1.25rem',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:'0.62rem',color:'rgba(255,255,255,0.35)',fontFamily:FONT}}>Leo Williams</span>
           <div style={{display:'flex',gap:'1rem'}}>
-            <a href="/" target="_blank" style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.35)',textDecoration:'none'}}>Site ↗</a>
-            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.35)',fontSize:'0.6rem',cursor:'pointer',padding:0}}>Sign Out</button>
+            <a href="/" target="_blank" style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.35)',textDecoration:'none',fontFamily:FONT}}>Site ↗</a>
+            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.35)',fontSize:'0.6rem',cursor:'pointer',padding:0,fontFamily:FONT}}>Sign Out</button>
           </div>
         </div>
       </aside>
 
       {/* MAIN */}
-      <main style={{background:paper,overflow:'auto'}}>
+      <main style={{background:PAPER,overflow:'auto'}}>
         {/* TOPBAR */}
-        <div style={{background:'#fff',borderBottom:`1px solid ${rule}`,padding:'0 2rem',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
-          <div style={{fontSize:'0.82rem',fontWeight:600,color:ink}}>
-            {tab==='dashboard'?'Overview':tab==='add'?editId?'Edit Listing':'Add New Listing':tab==='manage'?'Manage Listings':tab==='inquiries'?'Inquiries':'My Bio & Story'}
+        <div style={{background:'#fff',borderBottom:`1px solid ${RULE}`,padding:'0 2rem',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+            {tabHistory.length>0 && (
+              <button onClick={goBack} style={{background:'none',border:`1px solid ${RULE}`,color:'#6B6B68',cursor:'pointer',padding:'0.3rem 0.75rem',fontSize:'0.62rem',fontWeight:600,fontFamily:FONT}}>← Back</button>
+            )}
+            <span style={{fontSize:'0.82rem',fontWeight:600,color:INK,fontFamily:FONT}}>{tabLabel}</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-            <span style={{fontSize:'0.62rem',color:'#9B9B98'}}>{live} live · {draft} draft · {rented} rented</span>
-            <button onClick={()=>{setForm(EMPTY);setEditId(null);setTab('add')}} style={{background:ink,color:'#fff',...SB,fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',padding:'0.5rem 1.1rem',border:'none',cursor:'pointer'}}>+ Add Listing</button>
+            <span style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{live} live · {draft} draft · {rented} rented</span>
+            <button onClick={()=>{setForm(EMPTY);setEditId(null);navTo('add')}} style={s.btn}>+ Add Listing</button>
           </div>
         </div>
 
@@ -296,80 +285,73 @@ export default function Admin() {
             <div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'1rem',marginBottom:'2rem'}}>
                 {[
-                  {label:'Live Listings',value:live,action:()=>{setManageFilter('live');setTab('manage')}},
-                  {label:'Drafts',value:draft,action:()=>{setManageFilter('draft');setTab('manage')}},
-                  {label:'New Inquiries',value:newInquiries,action:()=>setTab('inquiries')},
-                  {label:'Rented',value:rented,action:()=>{setManageFilter('rented');setTab('manage')}},
-                ].map(s=>(
-                  <div key={s.label} style={{background:'#fff',border:`1px solid ${rule}`,padding:'1.5rem',cursor:'pointer'}} onClick={s.action}>
-                    <div style={{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:'2.2rem',fontWeight:300,color:ink,lineHeight:1}}>{s.value}</div>
-                    <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',margin:'0.3rem 0 0.75rem'}}>{s.label}</div>
-                    <div style={{fontSize:'0.58rem',fontWeight:600,color:gold}}>Manage →</div>
+                  {label:'Live Listings',value:live,click:()=>{setManageFilter('live');navTo('manage')}},
+                  {label:'Drafts',value:draft,click:()=>{setManageFilter('draft');navTo('manage')}},
+                  {label:'New Inquiries',value:newInquiries,click:()=>navTo('inquiries')},
+                  {label:'Rented',value:rented,click:()=>{setManageFilter('rented');navTo('manage')}},
+                ].map(stat=>(
+                  <div key={stat.label} onClick={stat.click} style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem',cursor:'pointer'}}>
+                    <div style={{fontFamily:SERIF,fontSize:'2.4rem',fontWeight:300,color:BLUE,lineHeight:1}}>{stat.value}</div>
+                    <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',margin:'0.3rem 0 0.75rem',fontFamily:FONT}}>{stat.label}</div>
+                    <div style={{fontSize:'0.58rem',fontWeight:600,color:GOLD,fontFamily:FONT}}>Manage →</div>
                   </div>
                 ))}
               </div>
-              <div style={{background:'#fff',border:`1px solid ${rule}`,padding:'1.5rem'}}>
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem'}}>Recent Listings</div>
-                {listings.slice(0,5).map(l=>(
-                  <div key={l.id} onClick={()=>editListing(l)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:`1px solid ${rule}`,cursor:'pointer'}}>
+              <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
+                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem',fontFamily:FONT}}>Recent Listings</div>
+                {listings.slice(0,6).map(l=>(
+                  <div key={l.id} onClick={()=>editListing(l)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:`1px solid ${RULE}`,cursor:'pointer'}}>
                     <div>
-                      <div style={{fontSize:'0.78rem',fontWeight:500,color:ink}}>{l.neighborhood} · {l.price}</div>
-                      <div style={{fontSize:'0.62rem',color:'#9B9B98'}}>{l.beds||'Studio'} bed · {l.baths} bath</div>
+                      <div style={{fontSize:'0.78rem',fontWeight:500,color:INK,fontFamily:FONT}}>{l.neighborhood} · {l.price}</div>
+                      <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{l.beds||'Studio'} bed · {l.baths} bath</div>
                     </div>
-                    <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',background:l.status==='live'?'#E8F5EE':l.status==='draft'?paper:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
+                    <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
                   </div>
                 ))}
-                {listings.length === 0 && <div style={{textAlign:'center',padding:'2rem',color:'#9B9B98',fontSize:'0.78rem'}}>No listings yet. <button onClick={()=>setTab('add')} style={{color:blue,background:'none',border:'none',cursor:'pointer',fontSize:'0.78rem'}}>Add one →</button></div>}
+                {listings.length===0 && <div style={{textAlign:'center',padding:'2rem',color:'#9B9B98',fontSize:'0.78rem',fontFamily:FONT}}>No listings yet.</div>}
               </div>
             </div>
           )}
 
           {/* ADD / EDIT */}
           {tab==='add' && (
-            <div style={{background:'#fff',border:`1px solid ${rule}`,padding:'2rem'}}>
-              <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.5rem'}}>{editId?'Editing Listing':'New Listing'}</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
+            <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'2rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
                 {([
                   {label:'Neighborhood',key:'neighborhood',placeholder:'Upper West Side'},
                   {label:'Price',key:'price',placeholder:'$3,200/mo'},
-                  {label:'Beds',key:'beds',placeholder:'2 (or leave blank for Studio)'},
+                  {label:'Beds (leave blank for Studio)',key:'beds',placeholder:'1, 2, 3...'},
                   {label:'Baths',key:'baths',placeholder:'1'},
                   {label:'Lease Length',key:'lease_length',placeholder:'12 months'},
-                  {label:'Badge',key:'badge',placeholder:'New, Featured...'},
                   {label:'Concessions',key:'concessions',placeholder:'1 month free'},
+                  {label:'Badge',key:'badge',placeholder:'New, Featured...'},
                   {label:'Full Address (private)',key:'full_address',placeholder:'123 Main St, Apt 4B'},
                 ] as {label:string,key:string,placeholder:string}[]).map(f=>(
                   <div key={f.key}>
-                    <label style={{display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem'}}>{f.label}</label>
-                    <input value={(form as any)[f.key]} onChange={e=>setForm(prev=>({...prev,[f.key]:e.target.value}))} placeholder={f.placeholder} style={inp} />
+                    <label style={s.label}>{f.label}</label>
+                    <input value={(form as any)[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder} style={s.inp} />
                   </div>
                 ))}
               </div>
-              <div style={{marginTop:'1rem'}}>
-                <label style={{display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem'}}>Description</label>
-                <textarea value={form.description} onChange={e=>setForm(prev=>({...prev,description:e.target.value}))} placeholder="Describe the apartment..." rows={4} style={{...inp,resize:'vertical'}} />
+              <div style={{marginBottom:'1rem'}}>
+                <label style={s.label}>Description</label>
+                <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Describe the apartment..." rows={4} style={{...s.inp,resize:'vertical'}} />
               </div>
-              <div style={{marginTop:'1rem'}}>
-                <label style={{display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem'}}>Amenities (comma separated)</label>
-                <input value={form.amenities as string} onChange={e=>setForm(prev=>({...prev,amenities:e.target.value}))} placeholder="Doorman, Gym, Laundry in unit, Elevator..." style={inp} />
+              <div style={{marginBottom:'1rem'}}>
+                <label style={s.label}>Amenities (comma separated)</label>
+                <input value={form.amenities as string} onChange={e=>setForm(p=>({...p,amenities:e.target.value}))} placeholder="Doorman, Gym, Laundry in unit, Elevator..." style={s.inp} />
               </div>
-              <div style={{marginTop:'1rem',display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(prev=>({...prev,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}} />
-                <label htmlFor="op_paid" style={{fontSize:'0.75rem',color:'#2C2C2A',cursor:'pointer'}}>Owner Paid — No Fee listing</label>
+              <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1.5rem'}}>
+                <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}} />
+                <label htmlFor="op_paid" style={{fontSize:'0.75rem',color:INK,cursor:'pointer',fontFamily:FONT}}>Owner Paid — No Fee listing</label>
               </div>
-              <div style={{marginTop:'1.5rem',display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
-                <button onClick={()=>saveListing('live')} style={{background:ink,color:'#fff',...SB,fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',padding:'0.75rem 1.5rem',border:'none',cursor:'pointer'}}>
-                  {saveStatus==='saving'?'Saving...':saveStatus==='saved'?'✓ Published!':'Publish Live'}
-                </button>
-                <button onClick={()=>saveListing('draft')} style={{background:'#fff',color:'#6B6B68',...SB,fontSize:'0.6rem',padding:'0.75rem 1.5rem',border:`1px solid ${rule}`,cursor:'pointer'}}>Save Draft</button>
-                {editId && (
-                  <button onClick={()=>saveListing('rented')} style={{background:'#F3EEFF',color:'#7B5EA7',...SB,fontSize:'0.6rem',padding:'0.75rem 1.5rem',border:'1px solid #D9CCF5',cursor:'pointer'}}>Mark Rented</button>
-                )}
-                {editId && (
-                  <button onClick={()=>{setForm(EMPTY);setEditId(null);setTab('manage')}} style={{background:'#fff',color:danger,...SB,fontSize:'0.6rem',padding:'0.75rem 1.5rem',border:`1px solid #FDECEA`,cursor:'pointer'}}>Cancel</button>
-                )}
+              <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
+                <button onClick={()=>saveListing('live')} style={s.btn}>{saveStatus==='saving'?'Saving...':saveStatus==='saved'?'✓ Published!':'Publish Live'}</button>
+                <button onClick={()=>saveListing('draft')} style={s.btnGhost}>Save Draft</button>
+                {editId && <button onClick={()=>saveListing('rented')} style={{...s.btnGhost,color:'#7B5EA7',borderColor:'#D9CCF5',background:'#F3EEFF'}}>Mark Rented</button>}
+                {editId && <button onClick={()=>{setForm(EMPTY);setEditId(null);goBack()}} style={{...s.btnGhost,color:DANGER,borderColor:'#FDECEA'}}>Cancel</button>}
               </div>
-              {saveStatus==='error' && <div style={{marginTop:'0.75rem',fontSize:'0.7rem',color:danger}}>Something went wrong. Try again.</div>}
+              {saveStatus==='error' && <div style={{marginTop:'0.75rem',fontSize:'0.7rem',color:DANGER,fontFamily:FONT}}>Something went wrong. Try again.</div>}
             </div>
           )}
 
@@ -378,31 +360,26 @@ export default function Admin() {
             <div>
               <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
                 {(['all','live','draft','rented'] as string[]).map(f=>(
-                  <button key={f} onClick={()=>setManageFilter(f)} style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',padding:'0.4rem 1rem',border:`1px solid ${rule}`,cursor:'pointer',background:manageFilter===f?ink:'#fff',color:manageFilter===f?'#fff':'#6B6B68',...SB}}>
+                  <button key={f} onClick={()=>setManageFilter(f)} style={{...s.btnGhost,background:manageFilter===f?INK:'#fff',color:manageFilter===f?'#fff':'#6B6B68',padding:'0.4rem 1rem',fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase'}}>
                     {f.charAt(0).toUpperCase()+f.slice(1)}
                   </button>
                 ))}
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
                 {filteredListings.map(l=>(
-                  <div key={l.id} style={{background:'#fff',border:`1px solid ${rule}`,padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div key={l.id} style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
-                      <div style={{fontSize:'0.85rem',fontWeight:500,color:ink,marginBottom:'0.2rem'}}>{l.neighborhood} · {l.price}</div>
-                      <div style={{fontSize:'0.62rem',color:'#9B9B98'}}>{l.beds||'Studio'} bed · {l.baths} bath · {l.lease_length}{l.op_paid?' · No Fee':''}</div>
+                      <div style={{fontSize:'0.85rem',fontWeight:500,color:INK,fontFamily:FONT,marginBottom:'0.2rem'}}>{l.neighborhood} · {l.price}</div>
+                      <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{l.beds||'Studio'} bed · {l.baths} bath · {l.lease_length}{l.op_paid?' · No Fee':''}</div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                      <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',background:l.status==='live'?'#E8F5EE':l.status==='draft'?paper:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
-                      <button onClick={()=>editListing(l)} style={{fontSize:'0.62rem',fontWeight:500,color:blue,background:'none',border:'none',cursor:'pointer',...SB}}>Edit</button>
-                      <button onClick={()=>deleteListing(l.id!)} style={{fontSize:'0.62rem',fontWeight:500,color:danger,background:'none',border:'none',cursor:'pointer',...SB}}>Delete</button>
+                      <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
+                      <button onClick={()=>editListing(l)} style={{fontSize:'0.62rem',fontWeight:500,color:BLUE,background:'none',border:'none',cursor:'pointer',fontFamily:FONT}}>Edit</button>
+                      <button onClick={()=>deleteListing(l.id!)} style={{fontSize:'0.62rem',fontWeight:500,color:DANGER,background:'none',border:'none',cursor:'pointer',fontFamily:FONT}}>Delete</button>
                     </div>
                   </div>
                 ))}
-                {filteredListings.length===0 && (
-                  <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${rule}`}}>
-                    No listings found.{' '}
-                    <button onClick={()=>setTab('add')} style={{color:blue,background:'none',border:'none',cursor:'pointer',fontSize:'0.78rem',...SB}}>Add one →</button>
-                  </div>
-                )}
+                {filteredListings.length===0 && <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${RULE}`,fontFamily:FONT}}>No listings found.</div>}
               </div>
             </div>
           )}
@@ -416,139 +393,100 @@ export default function Admin() {
                   {key:'renter',label:'Renters'},
                   {key:'landlord',label:'Landlords & Property Owners'},
                 ] as {key:string,label:string}[]).map(f=>(
-                  <button key={f.key} onClick={()=>setInquiryFilter(f.key)} style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',padding:'0.4rem 1rem',border:`1px solid ${rule}`,cursor:'pointer',background:inquiryFilter===f.key?ink:'#fff',color:inquiryFilter===f.key?'#fff':'#6B6B68',...SB}}>
+                  <button key={f.key} onClick={()=>setInquiryFilter(f.key)} style={{...s.btnGhost,background:inquiryFilter===f.key?INK:'#fff',color:inquiryFilter===f.key?'#fff':'#6B6B68',padding:'0.4rem 1rem',fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase'}}>
                     {f.label}
                   </button>
                 ))}
               </div>
-            <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-              {inquiries.filter(i=>inquiryFilter==='all'||i.inquiry_type===inquiryFilter).map(i=>(
-                <div key={i.id} style={{background:'#fff',border:`1px solid ${expandedInquiry===i.id?'#B8975A':rule}`}}>
-                  {/* HEADER ROW */}
-                  <div style={{padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setExpandedInquiry(expandedInquiry===i.id?null:i.id)}>
-                    <div>
-                      <div style={{fontSize:'0.85rem',fontWeight:600,color:ink,marginBottom:'0.2rem'}}>{i.first_name} {i.last_name}</div>
-                      <div style={{fontSize:'0.62rem',color:'#9B9B98'}}>{i.inquiry_type} · {i.neighborhood||'Any'} · {i.budget||'Flexible'} · {new Date(i.created_at).toLocaleDateString()}</div>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                      <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',background:i.status==='new'?'#EEF2F8':i.status==='contacted'?'#E8F5EE':paper,color:i.status==='new'?blue:i.status==='contacted'?'#1A6B3A':'#6B6B68'}}>{i.status}</span>
-                      <span style={{color:'#9B9B98',fontSize:'0.8rem'}}>{expandedInquiry===i.id?'▲':'▼'}</span>
-                    </div>
-                  </div>
-
-                  {/* EXPANDED */}
-                  {expandedInquiry===i.id && (
-                    <div style={{borderTop:`1px solid ${rule}`,padding:'1.25rem 1.5rem'}}>
-                      {/* CONTACT ACTIONS */}
-                      <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.25rem',flexWrap:'wrap'}}>
-                        {i.email && (
-                          <a href={`mailto:${i.email}`} style={{display:'inline-flex',alignItems:'center',gap:'0.4rem',fontSize:'0.62rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',color:'#fff',background:ink,padding:'0.55rem 1rem',textDecoration:'none',...SB}}>
-                            ✉ Email
-                          </a>
-                        )}
-                        {i.phone && (
-                          <a href={`tel:${i.phone}`} style={{display:'inline-flex',alignItems:'center',gap:'0.4rem',fontSize:'0.62rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',color:'#fff',background:blue,padding:'0.55rem 1rem',textDecoration:'none',...SB}}>
-                            📞 Call
-                          </a>
-                        )}
-                        {i.phone && (
-                          <a href={`sms:${i.phone}`} style={{display:'inline-flex',alignItems:'center',gap:'0.4rem',fontSize:'0.62rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',color:ink,background:'#fff',border:`1px solid ${rule}`,padding:'0.55rem 1rem',textDecoration:'none',...SB}}>
-                            💬 Text
-                          </a>
-                        )}
-                        <select value={i.status} onChange={e=>updateInquiryStatus(i.id,e.target.value)} style={{fontSize:'0.62rem',...SB,background:off,border:`1px solid ${rule}`,padding:'0.4rem 0.7rem',color:ink,outline:'none',marginLeft:'auto'}}>
-                          <option value="new">New</option>
-                          <option value="contacted">Contacted</option>
-                          <option value="closed">Closed</option>
-                        </select>
-                      </div>
-
-                      {/* CONTACT DETAILS */}
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'1rem',fontSize:'0.72rem',color:'#6B6B68'}}>
-                        <div><strong style={{color:ink}}>Email:</strong> {i.email||'—'}</div>
-                        <div><strong style={{color:ink}}>Phone:</strong> {i.phone||'—'}</div>
-                        <div><strong style={{color:ink}}>Neighborhood:</strong> {i.neighborhood||'Any'}</div>
-                        <div><strong style={{color:ink}}>Budget:</strong> {i.budget||'Flexible'}</div>
-                      </div>
-
-                      {/* MESSAGE */}
-                      {i.message && (
-                        <div style={{background:off,border:`1px solid ${rule}`,padding:'0.85rem 1rem',fontSize:'0.75rem',color:'#6B6B68',lineHeight:1.7,marginBottom:'1rem'}}>
-                          {i.message}
-                        </div>
-                      )}
-
-                      {/* NOTES */}
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {filteredInquiries.map(i=>(
+                  <div key={i.id} style={{background:'#fff',border:`1px solid ${expandedInquiry===i.id?GOLD:RULE}`}}>
+                    <div style={{padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setExpandedInquiry(expandedInquiry===i.id?null:i.id)}>
                       <div>
-                        <label style={{display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem'}}>Internal Notes</label>
-                        <textarea
-                          value={inquiryNotes[i.id]||''}
-                          onChange={e=>setInquiryNotes(prev=>({...prev,[i.id]:e.target.value}))}
-                          placeholder="Add notes about this inquiry..."
-                          rows={3}
-                          style={{...inp,resize:'vertical',marginBottom:'0.5rem'}}
-                        />
-                        <button onClick={()=>saveNotes(i.id)} style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'#fff',background:ink,border:'none',cursor:'pointer',padding:'0.5rem 1rem',...SB}}>
-                          Save Notes
-                        </button>
+                        <div style={{fontSize:'0.85rem',fontWeight:600,color:INK,fontFamily:FONT,marginBottom:'0.2rem'}}>{i.first_name} {i.last_name}</div>
+                        <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{i.inquiry_type==='landlord'?'Landlord / Property Owner':'Renter'} · {i.neighborhood||'Any'} · {i.budget||'Flexible'} · {new Date(i.created_at).toLocaleDateString()}</div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                        <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:i.status==='new'?'#EEF2F8':i.status==='contacted'?'#E8F5EE':PAPER,color:i.status==='new'?BLUE:i.status==='contacted'?'#1A6B3A':'#6B6B68'}}>{i.status}</span>
+                        <span style={{color:'#9B9B98',fontSize:'0.75rem'}}>{expandedInquiry===i.id?'▲':'▼'}</span>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-              {inquiries.filter(i=>inquiryFilter==='all'||i.inquiry_type===inquiryFilter).length===0 && <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${rule}`}}>No inquiries found.</div>}
-            </div>
+                    {expandedInquiry===i.id && (
+                      <div style={{borderTop:`1px solid ${RULE}`,padding:'1.25rem 1.5rem'}}>
+                        <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.25rem',flexWrap:'wrap',alignItems:'center'}}>
+                          {i.email && <a href={`mailto:${i.email}`} style={{...s.btn,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>✉ Email</a>}
+                          {i.phone && <a href={`tel:${i.phone}`} style={{...s.btn,background:BLUE,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>📞 Call</a>}
+                          {i.phone && <a href={`sms:${i.phone}`} style={{...s.btnGhost,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>💬 Text</a>}
+                          <select value={i.status} onChange={e=>updateInquiryStatus(i.id,e.target.value)} style={{marginLeft:'auto',fontSize:'0.62rem',fontFamily:FONT,background:OFF,border:`1px solid ${RULE}`,padding:'0.4rem 0.7rem',color:INK,outline:'none'}}>
+                            <option value="new">New</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'1rem',fontSize:'0.72rem',color:'#6B6B68',fontFamily:FONT}}>
+                          <div><strong style={{color:INK}}>Email:</strong> {i.email||'—'}</div>
+                          <div><strong style={{color:INK}}>Phone:</strong> {i.phone||'—'}</div>
+                          <div><strong style={{color:INK}}>Neighborhood:</strong> {i.neighborhood||'Any'}</div>
+                          <div><strong style={{color:INK}}>Budget:</strong> {i.budget||'Flexible'}</div>
+                        </div>
+                        {i.message && <div style={{background:OFF,border:`1px solid ${RULE}`,padding:'0.85rem 1rem',fontSize:'0.75rem',color:'#6B6B68',lineHeight:1.7,marginBottom:'1rem',fontFamily:FONT}}>{i.message}</div>}
+                        <label style={s.label}>Internal Notes</label>
+                        <textarea value={inquiryNotes[i.id]||''} onChange={e=>setInquiryNotes(p=>({...p,[i.id]:e.target.value}))} placeholder="Add private notes..." rows={3} style={{...s.inp,resize:'vertical',marginBottom:'0.5rem'}} />
+                        <button onClick={()=>saveNotes(i.id)} style={{...s.btn,fontSize:'0.58rem',padding:'0.5rem 1rem'}}>Save Notes</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {filteredInquiries.length===0 && <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${RULE}`,fontFamily:FONT}}>No inquiries found.</div>}
+              </div>
             </div>
           )}
 
-          {/* BIO */}
+          {/* BIO & PROFILE */}
           {tab==='bio' && (
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.5rem'}}>
-              <div style={{background:'#fff',border:`1px solid ${rule}`,padding:'1.5rem'}}>
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem'}}>Profile Photo</div>
-                {photoUrl && <img src={photoUrl} alt="Profile" style={{width:'120px',height:'150px',objectFit:'cover',objectPosition:'center top',marginBottom:'1rem',display:'block',border:`1px solid ${rule}`}} />}
-                <input ref={photoInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{display:'none'}} />
-                <button onClick={()=>photoInputRef.current?.click()} disabled={photoUploading} style={{fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#fff',background:ink,border:'none',cursor:'pointer',padding:'0.65rem 1.25rem',display:'block',marginBottom:'0.5rem',...SB}}>
-                  {photoUploading?'Uploading...':photoUrl?'Replace Photo':'Upload Photo'}
-                </button>
-                <div style={{fontSize:'0.62rem',color:'#9B9B98'}}>Appears on the public About section.</div>
-
-                <div style={{borderTop:`1px solid ${rule}`,marginTop:'1.5rem',paddingTop:'1.5rem'}}>
-                  <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem'}}>Contact Details</div>
-                  {[
-                    {label:'Phone',value:phone,set:setPhone,placeholder:'(212) 555-0100'},
-                    {label:'Email',value:contactEmail,set:setContactEmail,placeholder:'leo@leowilliamsnyc.com'},
-                  ].map(f=>(
-                    <div key={f.label} style={{marginBottom:'0.75rem'}}>
-                      <label style={{display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem'}}>{f.label}</label>
-                      <input value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.placeholder} style={inp} />
-                    </div>
-                  ))}
+              {/* LEFT — Photo + Contact */}
+              <div style={{display:'flex',flexDirection:'column',gap:'1.5rem'}}>
+                <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
+                  <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem',fontFamily:FONT}}>Profile Photo</div>
+                  {photoUrl
+                    ? <img src={photoUrl} alt="Profile" style={{width:'130px',height:'160px',objectFit:'cover',objectPosition:'center top',marginBottom:'1rem',display:'block',border:`1px solid ${RULE}`}} />
+                    : <div style={{width:'130px',height:'160px',background:PAPER,border:`1px solid ${RULE}`,marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',color:'#9B9B98',fontFamily:FONT}}>No photo</div>
+                  }
+                  <input ref={photoInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{display:'none'}} />
+                  <button onClick={()=>photoInputRef.current?.click()} disabled={photoUploading} style={{...s.btn,fontSize:'0.58rem',padding:'0.6rem 1.1rem',display:'block',marginBottom:'0.4rem'}}>
+                    {photoUploading?'Uploading...':photoUrl?'Replace Photo':'Upload Photo'}
+                  </button>
+                  <div style={{fontSize:'0.6rem',color:'#9B9B98',fontFamily:FONT}}>Appears on the public About section.</div>
                 </div>
 
-                <button onClick={saveProfile} style={{fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#fff',background:ink,border:'none',cursor:'pointer',padding:'0.65rem 1.25rem',marginTop:'0.5rem',...SB}}>
-                  {bioSaved?'✓ Saved!':'Save Profile'}
-                </button>
+                <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
+                  <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem',fontFamily:FONT}}>Contact Details</div>
+                  <div style={{marginBottom:'0.75rem'}}><label style={s.label}>Phone</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="(212) 555-0100" style={s.inp} /></div>
+                  <div style={{marginBottom:'1rem'}}><label style={s.label}>Email</label><input value={contactEmail} onChange={e=>setContactEmail(e.target.value)} placeholder="leo@leowilliamsnyc.com" style={s.inp} /></div>
+                  <button onClick={saveProfile} style={s.btn}>{profileSaved?'✓ Saved!':'Save Profile'}</button>
+                </div>
               </div>
 
-              <div style={{background:'#fff',border:`1px solid ${rule}`,padding:'1.5rem'}}>
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem'}}>Generate Bio with AI</div>
-                {[
-                  {label:'What brought you to NYC real estate?',value:bioQ1,set:setBioQ1},
-                  {label:'What makes you different from other agents?',value:bioQ2,set:setBioQ2},
-                  {label:'What do your clients say about working with you?',value:bioQ3,set:setBioQ3},
-                ].map((q,idx)=>(
+              {/* RIGHT — Bio */}
+              <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
+                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem',fontFamily:FONT}}>Generate Bio with AI</div>
+                {([
+                  {label:"What brought you to NYC real estate?",value:bioQ1,set:setBioQ1},
+                  {label:"What makes you different from other agents?",value:bioQ2,set:setBioQ2},
+                  {label:"What do your clients say about working with you?",value:bioQ3,set:setBioQ3},
+                ] as {label:string,value:string,set:(v:string)=>void}[]).map((q,idx)=>(
                   <div key={idx} style={{marginBottom:'1rem'}}>
-                    <label style={{display:'block',fontSize:'0.62rem',color:'#6B6B68',marginBottom:'0.3rem',...SB}}>{q.label}</label>
-                    <textarea value={q.value} onChange={e=>q.set(e.target.value)} rows={2} style={{...inp,resize:'vertical'}} />
+                    <label style={{...s.label,textTransform:'none',letterSpacing:0,fontSize:'0.68rem',color:'#6B6B68'}}>{q.label}</label>
+                    <textarea value={q.value} onChange={e=>q.set(e.target.value)} rows={2} style={{...s.inp,resize:'vertical'}} />
                   </div>
                 ))}
-                <button onClick={generateBio} disabled={bioGenerating} style={{fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#fff',background:blue,border:'none',cursor:'pointer',padding:'0.65rem 1.25rem',marginBottom:'1.5rem',...SB}}>
+                <button onClick={generateBio} disabled={bioGenerating} style={{...s.btn,background:BLUE,marginBottom:'1.5rem'}}>
                   {bioGenerating?'Generating...':'✨ Generate Bio'}
                 </button>
-
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.5rem'}}>Bio Text</div>
-                <textarea value={bio} onChange={e=>setBio(e.target.value)} rows={7} placeholder="Your bio will appear here..." style={{...inp,resize:'vertical',marginBottom:'1rem'}} />
+                <label style={s.label}>Bio Text</label>
+                <textarea value={bio} onChange={e=>setBio(e.target.value)} rows={8} placeholder="Your bio will appear here..." style={{...s.inp,resize:'vertical',marginBottom:'1rem'}} />
+                <button onClick={saveProfile} style={s.btn}>{profileSaved?'✓ Saved!':'Save Bio'}</button>
               </div>
             </div>
           )}
