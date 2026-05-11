@@ -50,6 +50,7 @@ export default function Home() {
   const [selectedBeds, setSelectedBeds] = useState<string[]>([])
   const [selectedBaths, setSelectedBaths] = useState<string[]>([])
   const [showFilter, setShowFilter] = useState(false)
+  const [cardPhotoIdx, setCardPhotoIdx] = useState<Record<string,number>>({})
   const [searchBeds, setSearchBeds] = useState('Any')
   const [searchBaths, setSearchBaths] = useState('Any')
   const [searchMin, setSearchMin] = useState('No min')
@@ -379,14 +380,43 @@ export default function Home() {
             const bv = bedsLabel(l.beds)
             const photo = l.photos?.length ? l.photos[0] : FALLBACK_IMG
             return (
-              <div key={l.id} className="lcard" onClick={()=>setModal(l)}>
-                <div className="lcard-img">
-                  {l.op_paid && <span className="lcard-badge badge-nofee">No Fee</span>}
-                  {!l.op_paid && l.badge && <span className="lcard-badge badge-new">{l.badge}</span>}
+              <div key={l.id} className="lcard">
+                <div className="lcard-img" style={{position:'relative'}}>
+                  {l.badge && <span className="lcard-badge badge-new">{l.badge}</span>}
                   {l.status === 'rented' && <span className="lcard-badge" style={{background:'var(--blue)',color:'var(--white)',right:'0.85rem',left:'auto'}}>Rented</span>}
-                  <img src={photo} alt={l.neighborhood} loading="lazy" />
+                  {/* Photo */}
+                  <img
+                    src={l.photos?.length ? l.photos[cardPhotoIdx[l.id!]||0] : FALLBACK_IMG}
+                    alt={l.neighborhood}
+                    loading="lazy"
+                    onClick={()=>setModal(l)}
+                    style={{cursor:'pointer',width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                  />
+                  {/* Prev arrow */}
+                  {(l.photos?.length||0) > 1 && (cardPhotoIdx[l.id!]||0) > 0 && (
+                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:(p[l.id!]||0)-1}))}}
+                      style={{position:'absolute',left:'8px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.45)',color:'#fff',border:'none',width:'28px',height:'28px',borderRadius:'50%',cursor:'pointer',fontSize:'14px',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>
+                      ‹
+                    </button>
+                  )}
+                  {/* Next arrow */}
+                  {(l.photos?.length||0) > 1 && (cardPhotoIdx[l.id!]||0) < (l.photos?.length||0)-1 && (
+                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:(p[l.id!]||0)+1}))}}
+                      style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.45)',color:'#fff',border:'none',width:'28px',height:'28px',borderRadius:'50%',cursor:'pointer',fontSize:'14px',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>
+                      ›
+                    </button>
+                  )}
+                  {/* Dot indicators */}
+                  {(l.photos?.length||0) > 1 && (
+                    <div style={{position:'absolute',bottom:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'4px',zIndex:2}}>
+                      {(l.photos||[]).map((_,i)=>(
+                        <div key={i} onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:i}))}}
+                          style={{width:'5px',height:'5px',borderRadius:'50%',background:(cardPhotoIdx[l.id!]||0)===i?'#fff':'rgba(255,255,255,0.45)',cursor:'pointer',transition:'background 0.2s'}}/>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="lcard-body">
+                <div className="lcard-body" onClick={()=>setModal(l)} style={{cursor:'pointer'}}>
                   <div className="lcard-price">{l.price}</div>
                   <div className="lcard-name">{l.neighborhood}{bv ? ` · ${bv}${bv === 'Studio' ? '' : ' Bed'}` : ''}</div>
                   <div className="lcard-loc">📍 {l.neighborhood}</div>
