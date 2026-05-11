@@ -42,7 +42,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<Listing | null>(null)
   const [carouselIdx, setCarouselIdx] = useState(0)
-  const [formData, setFormData] = useState({ first_name:'', last_name:'', email:'', phone:'', neighborhood:'', budget:'', message:'', inquiry_type:'renter' })
+  const [formData, setFormData] = useState({ first_name:'', last_name:'', email:'', phone:'', city:'', neighborhood:'', budget:'', move_in:'', message:'', inquiry_type:'renter' })
   const [formSent, setFormSent] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [searchHood, setSearchHood] = useState('Any')
@@ -119,7 +119,8 @@ export default function Home() {
   async function submitForm(e: React.FormEvent) {
     e.preventDefault()
     setFormLoading(true)
-    const { error } = await getSupabase().from('inquiries').insert([{ ...formData, status: 'new', source: 'website' }])
+    const neighborhoodStr = [formData.city, formData.neighborhood].filter(Boolean).join(' - ')
+    const { error } = await getSupabase().from('inquiries').insert([{ ...formData, neighborhood: neighborhoodStr, status: 'new', source: 'website' }])
     setFormLoading(false)
     if (!error) setFormSent(true)
   }
@@ -358,16 +359,25 @@ export default function Home() {
                 <div className="ff"><label>Phone</label><input placeholder="(212) 555-0100" value={formData.phone} onChange={e=>setFormData(f=>({...f,phone:e.target.value}))} /></div>
               </div>
               <div className="form-row">
-                <div className="ff"><label>Neighborhood</label>
-                  <select value={formData.neighborhood} onChange={e=>setFormData(f=>({...f,neighborhood:e.target.value}))}>
-                    <option value="">Any</option>
-                    <option>Upper West Side</option><option>Upper East Side</option><option>Midtown</option>
-                    <option>West Village</option><option>Williamsburg</option><option>Astoria, Queens</option>
+                <div className="ff"><label>City / Borough</label>
+                  <select value={formData.city} onChange={e=>setFormData(f=>({...f,city:e.target.value}))}>
+                    <option value="">Flexible</option>
+                    <option>Manhattan</option>
+                    <option>Brooklyn</option>
+                    <option>Queens</option>
+                    <option>The Bronx</option>
+                    <option>Staten Island</option>
                   </select>
                 </div>
                 <div className="ff"><label>Budget</label>
                   <input type="text" placeholder="e.g. $3,000/mo or flexible" value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))} />
                 </div>
+              </div>
+              <div className="ff"><label>Specific Neighborhoods (optional)</label>
+                <input type="text" placeholder="e.g. Williamsburg, Upper West Side, Nolita..." value={formData.neighborhood} onChange={e=>setFormData(f=>({...f,neighborhood:e.target.value}))} />
+              </div>
+              <div className="ff"><label>Move-in Date</label>
+                <input type="text" placeholder="e.g. June 1, ASAP, flexible..." value={formData.move_in} onChange={e=>setFormData(f=>({...f,move_in:e.target.value}))} />
               </div>
               <div className="ff"><label>Message</label><textarea placeholder="Tell me what you're looking for..." value={formData.message} onChange={e=>setFormData(f=>({...f,message:e.target.value}))} /></div>
               <button type="submit" className="form-submit" disabled={formLoading}>{formLoading ? 'Sending...' : 'Send Message'}</button>
