@@ -51,6 +51,7 @@ export default function Home() {
   const [selectedBaths, setSelectedBaths] = useState<string[]>([])
   const [showFilter, setShowFilter] = useState(false)
   const [searchBeds, setSearchBeds] = useState('Any')
+  const [searchBaths, setSearchBaths] = useState('Any')
   const [searchMin, setSearchMin] = useState('No min')
   const [searchMax, setSearchMax] = useState('No max')
   const listingsRef = useRef<HTMLElement>(null)
@@ -147,8 +148,14 @@ export default function Home() {
         (searchBeds === '1 Bed' && bv === '1') ||
         (searchBeds === '2 Bed' && bv === '2') ||
         (searchBeds === '3+ Bed' && parseInt(bv) >= 3)
+      const lb = parseFloat(String(l.baths||'0'))
+      const bathsMatch = searchBaths === 'Any' ||
+        (searchBaths === '1' && lb === 1) ||
+        (searchBaths === '1.5' && lb === 1.5) ||
+        (searchBaths === '2' && lb === 2) ||
+        (searchBaths === '2+' && lb >= 2)
       const priceMatch = price >= minP && price <= maxP
-      return hoodMatch && bedsMatch && priceMatch
+      return hoodMatch && bedsMatch && bathsMatch && priceMatch
     })
     setFiltered(result)
     listingsRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -209,13 +216,26 @@ export default function Home() {
             <div className="sfields">
               <div className="sf"><label>Neighborhood</label>
                 <select value={searchHood} onChange={e=>setSearchHood(e.target.value)}>
-                  <option>Any</option>
-                  {hoods.map(h=><option key={h}>{h}</option>)}
+                  <option value="Any">Any</option>
+                  <optgroup label="Manhattan">
+                    {hoods.filter(h=>!h.includes('Brooklyn')&&!h.includes('Queens')&&!h.includes('Bronx')&&!h.includes('Staten')).map(h=><option key={h}>{h}</option>)}
+                  </optgroup>
+                  {hoods.some(h=>h.includes('Brooklyn'))&&<optgroup label="Brooklyn">
+                    {hoods.filter(h=>h.includes('Brooklyn')).map(h=><option key={h}>{h}</option>)}
+                  </optgroup>}
+                  {hoods.some(h=>h.includes('Queens'))&&<optgroup label="Queens">
+                    {hoods.filter(h=>h.includes('Queens')).map(h=><option key={h}>{h}</option>)}
+                  </optgroup>}
                 </select>
               </div>
               <div className="sf"><label>Bedrooms</label>
                 <select value={searchBeds} onChange={e=>setSearchBeds(e.target.value)}>
                   <option>Any</option><option>Studio</option><option>1 Bed</option><option>2 Bed</option><option>3+ Bed</option>
+                </select>
+              </div>
+              <div className="sf"><label>Bathrooms</label>
+                <select value={searchBaths} onChange={e=>setSearchBaths(e.target.value)}>
+                  <option>Any</option><option value="1">1 Bath</option><option value="1.5">1.5 Bath</option><option value="2">2 Bath</option><option value="2+">2+ Bath</option>
                 </select>
               </div>
               <div className="sf"><label>Min Price</label>
