@@ -14,7 +14,9 @@ type Listing = {
   op_paid?: boolean
   description?: string
   amenities?: string[]
+  featured_amenities?: string[]
   photos?: string[]
+  private_photos?: string[]
   status: string
   badge?: string
 }
@@ -435,6 +437,15 @@ export default function Home() {
                     <div className="lcard-spec"><strong>{l.baths || '—'}</strong>Bath</div>
                     <div className="lcard-spec"><strong>{l.lease_length || '—'}</strong>Lease</div>
                   </div>
+                  {(l.featured_amenities||[]).length>0&&(
+                    <div style={{display:'flex',flexWrap:'wrap',gap:'4px',margin:'6px 0'}}>
+                      {(l.featured_amenities||[]).slice(0,3).map(a=>(
+                        <span key={a} style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.06em',padding:'2px 7px',background:'#FFFBF2',border:'1px solid #B8975A',color:'#B8975A',fontFamily:'var(--sans)'}}>
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="lcard-hint">📷 View photos &amp; details</div>
                 </div>
               </div>
@@ -568,8 +579,9 @@ export default function Home() {
                 <div className="ff"><label>City</label>
                   <input type="text" placeholder="e.g. Manhattan, Brooklyn, Queens..." value={formData.city} onChange={e=>setFormData(f=>({...f,city:e.target.value}))} />
                 </div>
-                <div className="ff"><label>Budget</label>
-                  <input type="text" placeholder="e.g. $3,000/mo or flexible" value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))} />
+                <div className="ff">
+                  <label>{formData.inquiry_type === 'landlord' ? 'Asking Price / Rent' : 'Budget'}</label>
+                  <input type="text" placeholder={formData.inquiry_type === 'landlord' ? 'e.g. $4,500/mo or $1.2M' : 'e.g. $3,000/mo or flexible'} value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))} />
                 </div>
               </div>
               <div className="ff"><label>Specific Neighborhoods (optional)</label>

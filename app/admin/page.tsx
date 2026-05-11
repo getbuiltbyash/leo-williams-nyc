@@ -15,6 +15,7 @@ type Listing = {
   op_paid: boolean
   description: string
   amenities: string[]
+  featured_amenities: string[]
   photos: string[]
   private_photos: string[]
   status: string
@@ -39,7 +40,7 @@ type Inquiry = {
 const EMPTY: Listing = {
   neighborhood:'',full_address:'',price:'',beds:'',baths:'',
   lease_length:'',concessions:'',op_paid:false,description:'',
-  amenities:[],photos:[],private_photos:[],status:'draft',badge:''
+  amenities:[],featured_amenities:[],photos:[],private_photos:[],status:'draft',badge:''
 }
 
 const AMENITIES = [
@@ -119,6 +120,7 @@ export default function Admin(){
   const [editingNote,setEditingNote]=useState<Record<string,string|null>>({})
   const [editingNoteText,setEditingNoteText]=useState<Record<string,string>>({})
   const [descGen,setDescGen]=useState(false)
+  const [amenSuggestLoad,setAmenSuggestLoad]=useState(false)
   const [hoodLoad,setHoodLoad]=useState(false)
   const [extraNotes,setExtraNotes]=useState('')
   const [customAm,setCustomAm]=useState('')
@@ -175,6 +177,23 @@ export default function Admin(){
       const d=await res.json();if(d.neighborhood)setF('neighborhood',d.neighborhood)
     }catch(e){console.error(e)}
     setHoodLoad(false)
+  }
+
+  async function suggestFeatured(){
+    if(!form.amenities.length){alert('Add amenities to this listing first.');return}
+    setAmenSuggestLoad(true)
+    try{
+      const res=await fetch('/api/suggest-amenities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({neighborhood:form.neighborhood,amenities:form.amenities,beds:form.beds,price:form.price})})
+      const d=await res.json()
+      if(d.suggestions?.length) setForm(p=>({...p,featured_amenities:d.suggestions}))
+    }catch(e){console.error(e)}
+    setAmenSuggestLoad(false)
+  }
+
+  function toggleFeatured(a:string){
+    // Only allow toggling amenities that are on this listing
+    if(!form.amenities.includes(a)) return
+    setForm(p=>({...p,featured_amenities:p.featured_amenities.includes(a)?p.featured_amenities.filter(x=>x!==a):[...p.featured_amenities,a]}))
   }
 
   async function genDesc(){
@@ -269,7 +288,7 @@ export default function Admin(){
     await getSupabase().from('listings').delete().eq('id',id);loadAll()
   }
 
-  function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[],private_photos:Array.isArray(l.private_photos)?l.private_photos:[]});setEditId(l.id||null);setPhotoOrder([]);nav('add')}
+  function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[],featured_amenities:Array.isArray(l.featured_amenities)?l.featured_amenities:[],private_photos:Array.isArray(l.private_photos)?l.private_photos:[]});setEditId(l.id||null);setPhotoOrder([]);nav('add')}
 
   async function updInqStatus(id:string,status:string){await getSupabase().from('inquiries').update({status}).eq('id',id);loadAll()}
   async function loadNotes(id:string, raw:string){
@@ -595,6 +614,33 @@ export default function Admin(){
                   )}
                 </div>
               </Card>
+
+              {/* FEATURED AMENITIES */}
+              {form.amenities.length>0&&(
+                <Card>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+                    <CardTitle title="Featured Amenities — shown on listing card"/>
+                    <button onClick={suggestFeatured} disabled={amenSuggestLoad} style={{...PB,background:BL,fontSize:'11px',padding:'6px 14px'}}>{amenSuggestLoad?'Thinking...':'✨ AI Suggest'}</button>
+                  </div>
+                  <div style={{fontSize:'12px',color:'#9B9B98',fontFamily:F,marginBottom:'12px'}}>Select up to 3 from your listing amenities. AI will suggest the most compelling ones — you can override.</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'8px'}}>
+                    {form.amenities.map(a=>{
+                      const selected=form.featured_amenities.includes(a)
+                      const maxed=form.featured_amenities.length>=3&&!selected
+                      return(
+                        <button key={a} type="button" onClick={()=>!maxed&&toggleFeatured(a)} style={{padding:'6px 12px',border:`1px solid ${selected?G:R}`,background:selected?'#FFFBF2':maxed?'#fafafa':OFF,color:selected?G:maxed?'#ccc':INK,fontSize:'12px',fontWeight:selected?700:400,fontFamily:F,cursor:maxed?'not-allowed':'pointer',transition:'all 0.15s'}}>
+                          {selected?'★ ':''}{a}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {form.featured_amenities.length>0&&(
+                    <div style={{marginTop:'12px',padding:'10px 12px',background:'#FFFBF2',border:`1px solid ${G}`,fontSize:'12px',color:G,fontFamily:F,fontWeight:600}}>
+                      Featured: {form.featured_amenities.join(' · ')}
+                    </div>
+                  )}
+                </Card>
+              )}
 
               {/* DESCRIPTION */}
               <Card>
