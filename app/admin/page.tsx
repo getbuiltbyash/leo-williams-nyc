@@ -678,7 +678,7 @@ export default function Admin(){
                           <div style={{display:'flex',gap:'8px',marginBottom:'1.25rem',flexWrap:'wrap',alignItems:'center'}}>
                             {inq.email&&<a href={`mailto:${inq.email}`} style={{...PB,textDecoration:'none',display:'inline-block'}}>✉ Email</a>}
                             {inq.phone&&<a href={`tel:${inq.phone}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block'}}>📞 Call</a>}
-                            {inq.phone&&<a href={`sms:${inq.phone}`} style={{...GB,textDecoration:'none',display:'inline-block'}}>💬 Text</a>}
+                            {inq.phone&&<a href={`sms:${inq.phone}`} style={{...PB,background:'#555',textDecoration:'none',display:'inline-block'}}>💬 TEXT</a>}
                             <select value={inq.status} onChange={e=>updInqStatus(inq.id,e.target.value)} style={{marginLeft:'auto',fontSize:'12px',fontFamily:F,background:OFF,border:`1px solid ${R}`,padding:'6px 10px',color:INK,outline:'none'}}>
                               <option value="new">New</option>
                               <option value="contacted">Contacted</option>
