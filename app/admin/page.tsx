@@ -205,18 +205,13 @@ export default function Admin(){
     for(let i=0;i<files.length;i++){
       const file=files[i]
       try{
-        // Convert ALL images server-side via Sharp (handles HEIC, JPEG, PNG, WEBP)
-        const fd=new FormData();fd.append('file',file)
-        const convRes=await fetch('/api/convert-image',{method:'POST',body:fd})
-        if(!convRes.ok) throw new Error('conversion failed')
-        const jpeg=await convRes.blob()
-        const path=`listings/${Date.now()}-${i}.jpg`
-        const{error}=await getSupabase().storage.from('listing-photos').upload(path,jpeg,{upsert:true,contentType:'image/jpeg'})
+        const path=`listings/${Date.now()}-${i}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`
+        const{error}=await getSupabase().storage.from('listing-photos').upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'})
         if(!error){
           const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path)
           uploaded.push(data.publicUrl)
         } else {
-          console.error('upload error:',error)
+          console.error('upload error:',JSON.stringify(error))
         }
       }catch(err){console.error('photo error:',err)}
     }
@@ -475,7 +470,7 @@ export default function Admin(){
                     ))}
                   </div>
                 )}
-                {form.photos.length>0&&<div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'8px'}}>{form.photos.length} photo{form.photos.length!==1?'s':''} · Gold outline = cover photo</div>}
+                {form.photos.length>0&&<div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'8px'}}>{form.photos.length} photo{form.photos.length!==1?'s':''} · Click "Set Cover" to choose which photo appears first</div>}
               </Card>
 
               {/* AMENITIES */}
