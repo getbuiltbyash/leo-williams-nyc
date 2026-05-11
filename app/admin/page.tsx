@@ -108,6 +108,7 @@ export default function Admin(){
   const [bioGen,setBioGen]=useState(false)
   const [profSaved,setProfSaved]=useState(false)
   const [photoUp,setPhotoUp]=useState(false)
+  const [listingPhotoUp,setListingPhotoUp]=useState(false)
   const [expandInq,setExpandInq]=useState<string|null>(null)
   const [inqNotes,setInqNotes]=useState<Record<string,string>>({})
   const [descGen,setDescGen]=useState(false)
@@ -180,6 +181,22 @@ export default function Admin(){
       console.error('compose error:',e)
       setCompose(p=>({...p,[key]:{type,text:'Network error. Check console.',load:false}}))
     }
+  }
+
+  async function uploadListingPhotos(e:React.ChangeEvent<HTMLInputElement>){
+    const files=e.target.files;if(!files||files.length===0)return
+    setListingPhotoUp(true)
+    const uploaded:string[]=[]
+    for(let i=0;i<files.length;i++){
+      const file=files[i]
+      const ext=file.name.split('.').pop()
+      const path=`listings/${Date.now()}-${i}.${ext}`
+      const{error}=await getSupabase().storage.from('listing-photos').upload(path,file,{upsert:true})
+      if(!error){const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path);uploaded.push(data.publicUrl)}
+    }
+    setForm(p=>({...p,photos:[...p.photos,...uploaded]}))
+    setListingPhotoUp(false)
+    e.target.value=''
   }
 
   async function saveListing(status:string){
@@ -369,6 +386,32 @@ export default function Admin(){
                   <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}}/>
                   <label htmlFor="op_paid" style={{fontSize:'13px',color:INK,cursor:'pointer',fontFamily:F}}>Owner Paid — No Fee to tenant (shows "No Fee" badge on site)</label>
                 </div>
+              </Card>
+
+              {/* PHOTOS */}
+              <Card>
+                <CardTitle title="Photos — carousel on listing cards, no maximum"/>
+                <label style={{display:'block',cursor:'pointer',border:`2px dashed ${R}`,padding:'2rem',textAlign:'center',background:OFF,marginBottom:'1rem'}}>
+                  <input type="file" multiple accept="image/*" onChange={uploadListingPhotos} style={{display:'none'}}/>
+                  <div style={{fontSize:'24px',marginBottom:'6px'}}>📷</div>
+                  <div style={{fontSize:'13px',fontWeight:600,color:INK,fontFamily:F,marginBottom:'4px'}}>{listingPhotoUp?'Uploading...':'Tap to add photos'}</div>
+                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · As many as you like · First photo is the cover</div>
+                </label>
+                {form.photos.length>0&&(
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
+                    {form.photos.map((url,idx)=>(
+                      <div key={idx} style={{position:'relative',aspectRatio:'1',overflow:'hidden',background:PAPER,outline:idx===0?`2px solid ${G}`:'none'}}>
+                        <img src={url} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                        {idx===0
+                          ?<span style={{position:'absolute',top:'4px',left:'4px',background:G,color:'#fff',fontSize:'9px',fontWeight:700,padding:'2px 6px',fontFamily:F}}>COVER</span>
+                          :<button onClick={()=>setForm(p=>({...p,photos:[url,...p.photos.filter((_,i)=>i!==idx)]}))} style={{position:'absolute',top:'4px',left:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F}}>Set Cover</button>
+                        }
+                        <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==idx)}))} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'22px',height:'22px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {form.photos.length>0&&<div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'8px'}}>{form.photos.length} photo{form.photos.length!==1?'s':''} · Gold outline = cover photo</div>}
               </Card>
 
               {/* AMENITIES */}

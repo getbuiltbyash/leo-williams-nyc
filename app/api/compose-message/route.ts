@@ -3,42 +3,53 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
   const { type, inquiry } = await req.json()
   const isLandlord = inquiry.inquiry_type === 'landlord'
+  const name = inquiry.first_name
 
   const emailPrompt = isLandlord
-    ? `You are Leo Williams, a NYC rental salesperson at DiGiulio Group. A landlord or property owner just submitted an inquiry. Write a short, warm, inquisitive email response that shows you've read their submission and want to learn more about their property. Ask 1-2 specific follow-up questions based on their details (neighborhood, message). Sound like a sharp agent who's genuinely interested in the listing opportunity — not a bot. Under 90 words. No subject line. Sign off as Leo.
+    ? `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group in New York City. A landlord or property owner submitted an inquiry through your website leowilliamsnyc.com.
 
-Landlord details:
-- Name: ${inquiry.first_name} ${inquiry.last_name}
+Write a professional, warm, first-person email response. Introduce yourself briefly. Reference their specific neighborhood and any details they shared. Ask one focused follow-up question about their property (e.g. unit type, availability, asking rent). Do not use em dashes. Do not use casual language. Do not mention urgency or pressure. Sound like a polished NYC agent who respects the client's time. Under 100 words. No subject line.
+
+Inquiry details:
+- Name: ${name}
 - Neighborhood: ${inquiry.neighborhood || 'not specified'}
-- Message: ${inquiry.message || 'none'}
+- Message: ${inquiry.message || 'none provided'}
 
-Write ONLY the email body.`
-    : `You are Leo Williams, a NYC rental salesperson at DiGiulio Group. A renter just submitted an inquiry. Write a short, warm, inquisitive email that shows you've actually read what they're looking for. Ask 1-2 smart follow-up questions based on their budget and neighborhood to help you find them the right place. Sound like a knowledgeable NYC agent, not a form response. Under 90 words. No subject line. Sign off as Leo.
+Write ONLY the email body, signed as Leo Williams.`
 
-Renter details:
-- Name: ${inquiry.first_name} ${inquiry.last_name}
-- Neighborhood interest: ${inquiry.neighborhood || 'flexible'}
+    : `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group in New York City. A prospective renter submitted an inquiry through your website leowilliamsnyc.com.
+
+Write a professional, warm, first-person email response. Introduce yourself and your role briefly. Acknowledge exactly what they're looking for based on their message and budget. Ask one smart, specific follow-up question that helps you find them the right apartment — something about timing, must-haves, or flexibility. Do not use em dashes. Do not use casual words like "spot" or "awesome." Do not speculate or make assumptions. Sound like a sharp, knowledgeable NYC agent. Under 100 words. No subject line.
+
+Inquiry details:
+- Name: ${name}
+- Neighborhood interest: ${inquiry.neighborhood || 'not specified'}
 - Budget: ${inquiry.budget || 'not specified'}
-- Message: ${inquiry.message || 'none'}
+- Message: ${inquiry.message || 'none provided'}
 
-Write ONLY the email body.`
+Write ONLY the email body, signed as Leo Williams, DiGiulio Group.`
 
   const smsPrompt = isLandlord
-    ? `You are Leo Williams, a NYC rental salesperson. A landlord just reached out about their property. Write a short, conversational SMS that acknowledges their inquiry and asks one specific follow-up question about their property (e.g. unit size, availability, current rent). Friendly but professional. Under 35 words. No emojis. Sign off as Leo.
+    ? `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group NYC. A landlord submitted an inquiry on your website.
 
-Landlord: ${inquiry.first_name} ${inquiry.last_name}
+Write a professional SMS response. Introduce yourself by name. Reference their neighborhood. Ask one specific question about the property. Under 40 words. No emojis. No em dashes. Professional tone.
+
+Name: ${name}
 Neighborhood: ${inquiry.neighborhood || 'not specified'}
 Message: ${inquiry.message || 'none'}
 
-Write ONLY the SMS.`
-    : `You are Leo Williams, a NYC rental salesperson. A renter just reached out. Write a short, conversational SMS that acknowledges what they're looking for and asks one smart follow-up question to help narrow down their search. Friendly but sharp. Under 35 words. No emojis. Sign off as Leo.
+Write ONLY the SMS text.`
 
-Renter: ${inquiry.first_name} ${inquiry.last_name}
-Neighborhood: ${inquiry.neighborhood || 'flexible'}
+    : `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group NYC. A renter submitted an inquiry on your website.
+
+Write a professional SMS response. Introduce yourself by name. Acknowledge what they're looking for. Ask one specific follow-up question about their search. Under 40 words. No emojis. Professional tone — not overly casual.
+
+Name: ${name}
+Neighborhood: ${inquiry.neighborhood || 'not specified'}
 Budget: ${inquiry.budget || 'not specified'}
 Message: ${inquiry.message || 'none'}
 
-Write ONLY the SMS.`
+Write ONLY the SMS text.`
 
   const prompt = type === 'email' ? emailPrompt : smsPrompt
 
@@ -51,7 +62,7 @@ Write ONLY the SMS.`
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 250,
+      max_tokens: 300,
       messages: [{ role: 'user', content: prompt }]
     })
   })
