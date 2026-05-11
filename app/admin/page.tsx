@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { getSupabase } from '@/lib/supabase'
+import { normalizePrice, normalizeBeds, normalizeBaths, normalizeLease, normalizeConcessions } from '@/lib/normalize'
 
 type Listing = {
   id?: string
@@ -13,7 +14,7 @@ type Listing = {
   concessions: string
   op_paid: boolean
   description: string
-  amenities: string | string[]
+  amenities: string[]
   photos: string[]
   status: string
   badge: string
@@ -37,447 +38,535 @@ type Inquiry = {
 const EMPTY: Listing = {
   neighborhood:'',full_address:'',price:'',beds:'',baths:'',
   lease_length:'',concessions:'',op_paid:false,description:'',
-  amenities:'',photos:[],status:'draft',badge:''
+  amenities:[],photos:[],status:'draft',badge:''
 }
 
-const GOLD='#B8975A', INK='#111110', RULE='#E2E0DA', OFF='#F8F7F4'
-const PAPER='#F2F1ED', BLUE='#1B3A6B', DANGER='#C0392B'
-const FONT = "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif"
-const SERIF = "'Cormorant Garamond', Georgia, serif"
+const AMENITIES = [
+  'Basketball court','Bike storage','Central A/C','City views',
+  'Co-working space','Concierge','Doorman','Electronic doorman',
+  'Elevator','Full gym','Great natural light','Hardwood floors',
+  'Heat included','High-speed WiFi','Hot water included','In-unit laundry',
+  'Laundry in building','Package room','Parking available','Pet friendly',
+  'Penthouse floor','Private elevator','Private outdoor space','Resident lounge',
+  'Renovated bathroom','Renovated kitchen','Rooftop access','Sauna',
+  'Storage unit','Theater room','Virtual doorman'
+].sort()
 
-const s = {
-  inp: {width:'100%',background:OFF,border:`1px solid ${RULE}`,color:INK,fontFamily:FONT,fontSize:'0.8rem',padding:'0.6rem 0.85rem',outline:'none',boxSizing:'border-box'} as React.CSSProperties,
-  label: {display:'block',fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'0.3rem',fontFamily:FONT} as React.CSSProperties,
-  btn: {background:INK,color:'#fff',fontFamily:FONT,fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',padding:'0.7rem 1.4rem',border:'none',cursor:'pointer'} as React.CSSProperties,
-  btnGhost: {background:'#fff',color:'#6B6B68',fontFamily:FONT,fontSize:'0.6rem',padding:'0.7rem 1.2rem',border:`1px solid ${RULE}`,cursor:'pointer'} as React.CSSProperties,
+const G='#B8975A',INK='#111110',R='#E2E0DA',OFF='#F8F7F4',PAPER='#F2F1ED',BL='#1B3A6B',DNG='#C0392B'
+const F="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+const SF="Georgia,serif"
+const I={width:'100%',background:OFF,border:`1px solid ${R}`,color:INK,fontFamily:F,fontSize:'13px',padding:'8px 12px',outline:'none',boxSizing:'border-box'} as React.CSSProperties
+const L={display:'block',fontSize:'10px',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase' as const,color:'#9B9B98',marginBottom:'4px',fontFamily:F}
+const PB={background:INK,color:'#fff',fontFamily:F,fontSize:'11px',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase' as const,padding:'8px 16px',border:'none',cursor:'pointer'} as React.CSSProperties
+const GB={background:'#fff',color:'#6B6B68',fontFamily:F,fontSize:'11px',padding:'8px 14px',border:`1px solid ${R}`,cursor:'pointer'} as React.CSSProperties
+
+function SBI({label,active,click,badge}:{label:string,active:boolean,click:()=>void,badge?:number}){
+  return <div onClick={click} style={{padding:'10px 20px',fontSize:'13px',fontWeight:active?700:400,color:'#fff',borderLeft:active?`3px solid ${G}`:'3px solid transparent',background:active?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',userSelect:'none',fontFamily:F}}>
+    <span>{label}</span>
+    {badge?<span style={{background:G,color:'#fff',fontSize:'11px',fontWeight:700,padding:'1px 7px',borderRadius:'10px'}}>{badge}</span>:null}
+  </div>
+}
+function SBS({label}:{label:string}){
+  return <div style={{padding:'14px 20px 4px',fontSize:'10px',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase' as const,color:'rgba(255,255,255,0.35)',fontFamily:F}}>{label}</div>
+}
+function Card({children,style}:{children:React.ReactNode,style?:React.CSSProperties}){
+  return <div style={{background:'#fff',border:`1px solid ${R}`,padding:'1.5rem',...style}}>{children}</div>
+}
+function CardTitle({title}:{title:string}){
+  return <div style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase' as const,color:'#9B9B98',marginBottom:'1rem',fontFamily:F}}>{title}</div>
+}
+function Row({children}:{children:React.ReactNode}){
+  return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>{children}</div>
+}
+function Field({label,children}:{label:string,children:React.ReactNode}){
+  return <div><label style={L}>{label}</label>{children}</div>
 }
 
-export default function Admin() {
-  const [authed, setAuthed] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [tab, setTab] = useState('dashboard')
-  const [tabHistory, setTabHistory] = useState<string[]>([])
-  const [listings, setListings] = useState<Listing[]>([])
-  const [inquiries, setInquiries] = useState<Inquiry[]>([])
-  const [newInquiries, setNewInquiries] = useState(0)
-  const [form, setForm] = useState<Listing>(EMPTY)
-  const [editId, setEditId] = useState<string|null>(null)
-  const [saveStatus, setSaveStatus] = useState('')
-  const [manageFilter, setManageFilter] = useState('all')
-  const [inquiryFilter, setInquiryFilter] = useState('all')
-  const [bio, setBio] = useState('')
-  const [phone, setPhone] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('/leo-headshot.jpg')
-  const [bioQ1, setBioQ1] = useState('')
-  const [bioQ2, setBioQ2] = useState('')
-  const [bioQ3, setBioQ3] = useState('')
-  const [bioGenerating, setBioGenerating] = useState(false)
-  const [profileSaved, setProfileSaved] = useState(false)
-  const [photoUploading, setPhotoUploading] = useState(false)
-  const [expandedInquiry, setExpandedInquiry] = useState<string|null>(null)
-  const [inquiryNotes, setInquiryNotes] = useState<Record<string,string>>({})
-  const photoInputRef = useRef<HTMLInputElement>(null)
+export default function Admin(){
+  const [authed,setAuthed]=useState(false)
+  const [loginEmail,setLoginEmail]=useState('')
+  const [loginPw,setLoginPw]=useState('')
+  const [loginErr,setLoginErr]=useState('')
+  const [loginLoad,setLoginLoad]=useState(false)
+  const [tab,setTab]=useState('dashboard')
+  const [tabHist,setTabHist]=useState<string[]>([])
+  const [listings,setListings]=useState<Listing[]>([])
+  const [inquiries,setInquiries]=useState<Inquiry[]>([])
+  const [newInq,setNewInq]=useState(0)
+  const [form,setForm]=useState<Listing>(EMPTY)
+  const [editId,setEditId]=useState<string|null>(null)
+  const [saveStatus,setSaveStatus]=useState('')
+  const [mFilter,setMFilter]=useState('all')
+  const [iFilter,setIFilter]=useState('all')
+  const [bio,setBio]=useState('')
+  const [pPhone,setPPhone]=useState('')
+  const [pEmail,setPEmail]=useState('')
+  const [photoUrl,setPhotoUrl]=useState('/leo-headshot.jpg')
+  const [bQ1,setBQ1]=useState('')
+  const [bQ2,setBQ2]=useState('')
+  const [bQ3,setBQ3]=useState('')
+  const [bioGen,setBioGen]=useState(false)
+  const [profSaved,setProfSaved]=useState(false)
+  const [photoUp,setPhotoUp]=useState(false)
+  const [expandInq,setExpandInq]=useState<string|null>(null)
+  const [inqNotes,setInqNotes]=useState<Record<string,string>>({})
+  const [descGen,setDescGen]=useState(false)
+  const [hoodLoad,setHoodLoad]=useState(false)
+  const [extraNotes,setExtraNotes]=useState('')
+  const [customAm,setCustomAm]=useState('')
+  const [compose,setCompose]=useState<Record<string,{type:string,text:string,load:boolean}>>({})
+  const photoRef=useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    getSupabase().auth.getSession().then(({ data }) => {
-      if (data.session) { setAuthed(true); loadAll() }
-    })
-  }, [])
+  useEffect(()=>{getSupabase().auth.getSession().then(({data})=>{if(data.session){setAuthed(true);loadAll()}})},[])
 
-  function navTo(t: string) {
-    setTabHistory(prev => [...prev, tab])
-    setTab(t)
+  function nav(t:string){setTabHist(p=>[...p,tab]);setTab(t)}
+  function back(){setTabHist(p=>{const h=[...p];const l=h.pop();if(l)setTab(l);return h})}
+
+  async function doLogin(e:React.FormEvent){
+    e.preventDefault();setLoginLoad(true);setLoginErr('')
+    const{error}=await getSupabase().auth.signInWithPassword({email:loginEmail,password:loginPw})
+    setLoginLoad(false)
+    if(error){setLoginErr('Incorrect email or password.');return}
+    setAuthed(true);loadAll()
   }
 
-  function goBack() {
-    setTabHistory(prev => {
-      const h = [...prev]
-      const last = h.pop()
-      if (last) setTab(last)
-      return h
-    })
-  }
-
-  async function doLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoginLoading(true); setLoginError('')
-    const { error } = await getSupabase().auth.signInWithPassword({ email, password })
-    setLoginLoading(false)
-    if (error) { setLoginError('Incorrect email or password.'); return }
-    setAuthed(true); loadAll()
-  }
-
-  async function loadAll() {
-    const [{ data: l }, { data: i }, { data: p }] = await Promise.all([
-      getSupabase().from('listings').select('*').order('created_at', { ascending: false }),
-      getSupabase().from('inquiries').select('*').order('created_at', { ascending: false }),
+  async function loadAll(){
+    const[{data:l},{data:i},{data:p}]=await Promise.all([
+      getSupabase().from('listings').select('*').order('created_at',{ascending:false}),
+      getSupabase().from('inquiries').select('*').order('created_at',{ascending:false}),
       getSupabase().from('profile').select('*').limit(1).single()
     ])
-    setListings(l || [])
-    setInquiries(i || [])
-    setNewInquiries((i||[]).filter((x:Inquiry) => x.status === 'new').length)
-    const notes: Record<string,string> = {}
-    ;(i||[]).forEach((x:Inquiry) => { notes[x.id] = x.notes || '' })
-    setInquiryNotes(notes)
-    if (p) { setBio(p.bio_text||''); setPhone(p.phone||''); setContactEmail(p.email||''); setPhotoUrl(p.photo_url||'') }
+    setListings(l||[]);setInquiries(i||[])
+    setNewInq((i||[]).filter((x:Inquiry)=>x.status==='new').length)
+    const n:Record<string,string>={};(i||[]).forEach((x:Inquiry)=>{n[x.id]=x.notes||''});setInqNotes(n)
+    if(p){setBio(p.bio_text||'');setPPhone(p.phone||'');setPEmail(p.email||'');setPhotoUrl(p.photo_url||'/leo-headshot.jpg')}
   }
 
-  async function saveListing(status: string) {
+  function toggleAm(a:string){setForm(p=>({...p,amenities:p.amenities.includes(a)?p.amenities.filter(x=>x!==a):[...p.amenities,a]}))}
+  function addCustomAm(){if(!customAm.trim())return;setForm(p=>({...p,amenities:[...p.amenities,customAm.trim()]}));setCustomAm('')}
+
+  function setF(key:string,val:string){setForm(p=>({...p,[key]:val}))}
+  function normBlur(key:string,fn:(v:string)=>string){return{onBlur:(e:React.FocusEvent<HTMLInputElement>)=>setF(key,fn(e.target.value))};}
+
+  async function deriveHood(address:string){
+    if(!address)return;setHoodLoad(true)
+    try{
+      const res=await fetch('/api/derive-neighborhood',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address})})
+      const d=await res.json();if(d.neighborhood)setF('neighborhood',d.neighborhood)
+    }catch(e){console.error(e)}
+    setHoodLoad(false)
+  }
+
+  async function genDesc(){
+    if(!form.neighborhood&&!form.full_address){alert('Add an address first.');return}
+    setDescGen(true)
+    try{
+      const res=await fetch('/api/generate-description',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({neighborhood:form.neighborhood,beds:form.beds,baths:form.baths,price:form.price,lease:form.lease_length,concessions:form.concessions,op_paid:form.op_paid,amenities:form.amenities.join(', '),notes:extraNotes})})
+      const d=await res.json();if(d.description)setF('description',d.description)
+    }catch(e){console.error(e)}
+    setDescGen(false)
+  }
+
+  async function doCompose(iid:string,type:string,inq:Inquiry){
+    const key=`${iid}-${type}`
+    setCompose(p=>({...p,[key]:{type,text:'',load:true}}))
+    try{
+      const res=await fetch('/api/compose-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,inquiry:inq})})
+      const d=await res.json();setCompose(p=>({...p,[key]:{type,text:d.message||'',load:false}}))
+    }catch(e){setCompose(p=>({...p,[key]:{type,text:'Failed to generate.',load:false}}))}
+  }
+
+  async function saveListing(status:string){
     setSaveStatus('saving')
-    const payload = { ...form, status, amenities: typeof form.amenities==='string' ? form.amenities.split(',').map(a=>a.trim()).filter(Boolean) : form.amenities }
-    const { error } = editId
-      ? await getSupabase().from('listings').update(payload).eq('id', editId)
-      : await getSupabase().from('listings').insert([payload])
-    if (error) { setSaveStatus('error'); return }
-    setSaveStatus('saved')
-    setTimeout(() => { setSaveStatus(''); setForm(EMPTY); setEditId(null); setTab('manage') }, 1200)
-    loadAll()
+    const payload={...form,status}
+    const{error}=editId?await getSupabase().from('listings').update(payload).eq('id',editId):await getSupabase().from('listings').insert([payload])
+    if(error){setSaveStatus('error');return}
+    setSaveStatus('saved');loadAll()
+    setTimeout(()=>{setSaveStatus('');setForm(EMPTY);setEditId(null);setExtraNotes('');setTab('manage')},1200)
   }
 
-  async function deleteListing(id: string) {
-    if (!confirm('Delete this listing?')) return
-    await getSupabase().from('listings').delete().eq('id', id)
-    loadAll()
+  async function delListing(id:string){
+    if(!confirm('Delete this listing?'))return
+    await getSupabase().from('listings').delete().eq('id',id);loadAll()
   }
 
-  function editListing(l: Listing) {
-    setForm({ ...l, amenities: Array.isArray(l.amenities) ? l.amenities.join(', ') : l.amenities||'' })
-    setEditId(l.id||null)
-    navTo('add')
+  function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[]});setEditId(l.id||null);nav('add')}
+
+  async function updInqStatus(id:string,status:string){await getSupabase().from('inquiries').update({status}).eq('id',id);loadAll()}
+  async function saveInqNotes(id:string){await getSupabase().from('inquiries').update({notes:inqNotes[id]||''}).eq('id',id)}
+
+  async function genBio(){
+    if(!bQ1&&!bQ2&&!bQ3)return;setBioGen(true)
+    try{const res=await fetch('/api/generate-bio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q1:bQ1,q2:bQ2,q3:bQ3})});const d=await res.json();setBio(d.bio)}catch(e){console.error(e)}
+    setBioGen(false)
   }
 
-  async function updateInquiryStatus(id: string, status: string) {
-    await getSupabase().from('inquiries').update({ status }).eq('id', id)
-    loadAll()
+  async function saveProf(){
+    const{data:ex}=await getSupabase().from('profile').select('id').limit(1).single()
+    const payload={bio_text:bio,phone:pPhone,email:pEmail,photo_url:photoUrl}
+    ex?await getSupabase().from('profile').update(payload).eq('id',ex.id):await getSupabase().from('profile').insert([payload])
+    setProfSaved(true);setTimeout(()=>setProfSaved(false),2000)
   }
 
-  async function saveNotes(id: string) {
-    await getSupabase().from('inquiries').update({ notes: inquiryNotes[id]||'' }).eq('id', id)
+  async function uploadPhoto(e:React.ChangeEvent<HTMLInputElement>){
+    const file=e.target.files?.[0];if(!file)return;setPhotoUp(true)
+    const ext=file.name.split('.').pop()
+    const{error}=await getSupabase().storage.from('listing-photos').upload(`profile/leo-photo.${ext}`,file,{upsert:true})
+    if(error){console.error(error);setPhotoUp(false);return}
+    const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(`profile/leo-photo.${ext}`)
+    setPhotoUrl(data.publicUrl);setPhotoUp(false)
   }
 
-  async function generateBio() {
-    if (!bioQ1 && !bioQ2 && !bioQ3) return
-    setBioGenerating(true)
-    try {
-      const res = await fetch('/api/generate-bio', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({q1:bioQ1,q2:bioQ2,q3:bioQ3}) })
-      const data = await res.json()
-      setBio(data.bio)
-    } catch(e) { console.error(e) }
-    setBioGenerating(false)
-  }
-
-  async function saveProfile() {
-    const { data: existing } = await getSupabase().from('profile').select('id').limit(1).single()
-    const payload = { bio_text:bio, phone, email:contactEmail, photo_url:photoUrl }
-    existing ? await getSupabase().from('profile').update(payload).eq('id', existing.id) : await getSupabase().from('profile').insert([payload])
-    setProfileSaved(true); setTimeout(()=>setProfileSaved(false), 2000)
-  }
-
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return
-    setPhotoUploading(true)
-    const ext = file.name.split('.').pop()
-    const { error } = await getSupabase().storage.from('listing-photos').upload(`profile/leo-photo.${ext}`, file, { upsert:true })
-    if (error) { console.error(error); setPhotoUploading(false); return }
-    const { data } = getSupabase().storage.from('listing-photos').getPublicUrl(`profile/leo-photo.${ext}`)
-    setPhotoUrl(data.publicUrl); setPhotoUploading(false)
-  }
-
-  const filteredListings = listings.filter(l => manageFilter==='all'||l.status===manageFilter)
-  const filteredInquiries = inquiries.filter(i => inquiryFilter==='all'||i.inquiry_type===inquiryFilter)
   const live=listings.filter(l=>l.status==='live').length
   const draft=listings.filter(l=>l.status==='draft').length
   const rented=listings.filter(l=>l.status==='rented').length
+  const filtL=listings.filter(l=>mFilter==='all'||l.status===mFilter)
+  const filtI=inquiries.filter(i=>iFilter==='all'||i.inquiry_type===iFilter)
+  const tabLabel=tab==='dashboard'?'Overview':tab==='add'?editId?'Edit Listing':'Add New Listing':tab==='manage'?'Manage Listings':tab==='inquiries'?'Inquiries':'My Bio & Story'
 
-  const tabLabel = tab==='dashboard'?'Overview':tab==='add'?editId?'Edit Listing':'Add New Listing':tab==='manage'?'Manage Listings':tab==='inquiries'?'Inquiries':'My Bio & Story'
-
-  if (!authed) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:INK,padding:'1rem',fontFamily:FONT}}>
+  if(!authed) return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:INK,padding:'1rem',fontFamily:F}}>
       <div style={{background:'#fff',padding:'2.5rem',width:'100%',maxWidth:'380px'}}>
-        <div style={{fontFamily:SERIF,fontSize:'1.3rem',fontWeight:300,marginBottom:'0.3rem'}}>Leo <em style={{fontStyle:'italic',color:GOLD}}>Williams</em></div>
-        <div style={{fontSize:'0.6rem',fontWeight:500,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'2rem',fontFamily:FONT}}>Admin Dashboard</div>
+        <div style={{fontFamily:SF,fontSize:'21px',fontWeight:300,marginBottom:'4px'}}>Leo <em style={{fontStyle:'italic',color:G}}>Williams</em></div>
+        <div style={{fontSize:'10px',fontWeight:500,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'2rem',fontFamily:F}}>Admin Dashboard</div>
         <form onSubmit={doLogin}>
-          <div style={{marginBottom:'1rem'}}><label style={s.label}>Email</label><input type="email" required placeholder="leo@leowilliamsnyc.com" value={email} onChange={e=>setEmail(e.target.value)} style={s.inp} /></div>
-          <div style={{marginBottom:'1rem'}}><label style={s.label}>Password</label><input type="password" required placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} style={s.inp} /></div>
-          {loginError && <div style={{fontSize:'0.68rem',color:DANGER,marginBottom:'0.5rem',fontFamily:FONT}}>{loginError}</div>}
-          <button type="submit" disabled={loginLoading} style={{...s.btn,width:'100%',marginTop:'0.25rem'}}>{loginLoading?'Signing in...':'Sign In'}</button>
+          <div style={{marginBottom:'1rem'}}><label style={L}>Email</label><input type="email" required placeholder="leo@leowilliamsnyc.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} style={I}/></div>
+          <div style={{marginBottom:'1rem'}}><label style={L}>Password</label><input type="password" required placeholder="••••••••" value={loginPw} onChange={e=>setLoginPw(e.target.value)} style={I}/></div>
+          {loginErr&&<div style={{fontSize:'12px',color:DNG,marginBottom:'8px'}}>{loginErr}</div>}
+          <button type="submit" disabled={loginLoad} style={{...PB,width:'100%',marginTop:'4px'}}>{loginLoad?'Signing in...':'Sign In'}</button>
         </form>
       </div>
     </div>
   )
 
-  return (
-    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',fontFamily:FONT}}>
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',minHeight:'100vh',fontFamily:F}}>
+
       {/* SIDEBAR */}
-      <aside style={{background:INK,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh',overflowY:'auto'}}>
-        {/* LOGO */}
-        <div style={{padding:'1.25rem',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-          <div style={{fontFamily:SERIF,fontSize:'1.05rem',fontWeight:300,color:'#fff',marginBottom:'3px'}}>Leo <em style={{fontStyle:'italic',color:GOLD}}>Williams</em></div>
-          <div style={{fontSize:'0.52rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',fontFamily:FONT}}>Admin Dashboard</div>
+      <div style={{background:INK,display:'flex',flexDirection:'column',position:'sticky',top:0,height:'100vh',overflowY:'auto'}}>
+        <div style={{padding:'20px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{fontFamily:SF,fontSize:'15px',fontWeight:400,color:'#fff',marginBottom:'3px'}}>Leo <em style={{fontStyle:'italic',color:G}}>Williams</em></div>
+          <div style={{fontSize:'10px',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)',fontFamily:F}}>Admin Dashboard</div>
         </div>
-
-        {/* NAV */}
-        <nav style={{flex:1,paddingTop:'0.5rem'}}>
-          <div onClick={()=>navTo('dashboard')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='dashboard'?700:400,color:'#ffffff',textDecoration:'none',borderLeft:tab==='dashboard'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='dashboard'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Overview</div>
-
-          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Listings</div>
-          <div onClick={()=>{setForm(EMPTY);setEditId(null);navTo('add')}} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='add'?700:400,color:'#ffffff',borderLeft:tab==='add'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='add'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Add New Listing</div>
-          <div onClick={()=>{setManageFilter('all');navTo('manage')}} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='manage'?700:400,color:'#ffffff',borderLeft:tab==='manage'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='manage'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Manage Listings</div>
-
-          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Inquiries</div>
-          <div onClick={()=>navTo('inquiries')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='inquiries'?700:400,color:'#ffffff',borderLeft:tab==='inquiries'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='inquiries'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span>All Inquiries</span>
-            {newInquiries>0 && <span style={{background:GOLD,color:'#fff',fontSize:'0.52rem',fontWeight:700,padding:'0.1rem 0.45rem',borderRadius:'10px'}}>{newInquiries}</span>}
-          </div>
-
-          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Profile</div>
-          <div onClick={()=>navTo('bio')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='bio'?700:400,color:'#ffffff',borderLeft:tab==='bio'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='bio'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>My Bio & Story</div>
-        </nav>
-
-        {/* FOOTER */}
-        <div style={{padding:'1rem 1.25rem',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:'0.62rem',color:'rgba(255,255,255,0.35)',fontFamily:FONT}}>Leo Williams</span>
-          <div style={{display:'flex',gap:'1rem'}}>
-            <a href="/" target="_blank" style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.35)',textDecoration:'none',fontFamily:FONT}}>Site ↗</a>
-            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.35)',fontSize:'0.6rem',cursor:'pointer',padding:0,fontFamily:FONT}}>Sign Out</button>
+        <div style={{flex:1,paddingTop:'8px'}}>
+          <SBI label="Overview" active={tab==='dashboard'} click={()=>nav('dashboard')}/>
+          <SBS label="Listings"/>
+          <SBI label="Add New Listing" active={tab==='add'} click={()=>{setForm(EMPTY);setEditId(null);setExtraNotes('');nav('add')}}/>
+          <SBI label="Manage Listings" active={tab==='manage'} click={()=>{setMFilter('all');nav('manage')}}/>
+          <SBS label="Inquiries"/>
+          <SBI label="All Inquiries" active={tab==='inquiries'} click={()=>nav('inquiries')} badge={newInq||undefined}/>
+          <SBS label="Profile"/>
+          <SBI label="My Bio & Story" active={tab==='bio'} click={()=>nav('bio')}/>
+        </div>
+        <div style={{padding:'16px 20px',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:'12px',color:'rgba(255,255,255,0.35)',fontFamily:F}}>Leo Williams</span>
+          <div style={{display:'flex',gap:'16px'}}>
+            <a href="/" target="_blank" style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',textDecoration:'none'}}>Site ↗</a>
+            <button onClick={async()=>{await getSupabase().auth.signOut();setAuthed(false)}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.35)',fontSize:'11px',cursor:'pointer',padding:0,fontFamily:F}}>Sign Out</button>
           </div>
         </div>
-      </aside>
+      </div>
 
       {/* MAIN */}
-      <main style={{background:PAPER,overflow:'auto'}}>
-        {/* TOPBAR */}
-        <div style={{background:'#fff',borderBottom:`1px solid ${RULE}`,padding:'0 2rem',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
-          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            {tabHistory.length>0 && (
-              <button onClick={goBack} style={{background:'none',border:`1px solid ${RULE}`,color:'#6B6B68',cursor:'pointer',padding:'0.3rem 0.75rem',fontSize:'0.62rem',fontWeight:600,fontFamily:FONT}}>← Back</button>
-            )}
-            <span style={{fontSize:'0.82rem',fontWeight:600,color:INK,fontFamily:FONT}}>{tabLabel}</span>
+      <div style={{background:PAPER,overflow:'auto'}}>
+        <div style={{background:'#fff',borderBottom:`1px solid ${R}`,padding:'0 2rem',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
+          <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+            {tabHist.length>0&&<button onClick={back} style={{...GB,padding:'4px 12px',fontSize:'12px'}}>← Back</button>}
+            <span style={{fontSize:'14px',fontWeight:600,color:INK,fontFamily:F}}>{tabLabel}</span>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-            <span style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{live} live · {draft} draft · {rented} rented</span>
-            <button onClick={()=>{setForm(EMPTY);setEditId(null);navTo('add')}} style={s.btn}>+ Add Listing</button>
+          <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
+            <span style={{fontSize:'12px',color:'#9B9B98',fontFamily:F}}>{live} live · {draft} draft · {rented} rented</span>
+            <button onClick={()=>{setForm(EMPTY);setEditId(null);setExtraNotes('');nav('add')}} style={PB}>+ Add Listing</button>
           </div>
         </div>
 
         <div style={{padding:'2rem'}}>
 
           {/* DASHBOARD */}
-          {tab==='dashboard' && (
+          {tab==='dashboard'&&(
             <div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'1rem',marginBottom:'2rem'}}>
                 {[
-                  {label:'Live Listings',value:live,click:()=>{setManageFilter('live');navTo('manage')}},
-                  {label:'Drafts',value:draft,click:()=>{setManageFilter('draft');navTo('manage')}},
-                  {label:'New Inquiries',value:newInquiries,click:()=>navTo('inquiries')},
-                  {label:'Rented',value:rented,click:()=>{setManageFilter('rented');navTo('manage')}},
-                ].map(stat=>(
-                  <div key={stat.label} onClick={stat.click} style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem',cursor:'pointer'}}>
-                    <div style={{fontFamily:SERIF,fontSize:'2.4rem',fontWeight:300,color:BLUE,lineHeight:1}}>{stat.value}</div>
-                    <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',margin:'0.3rem 0 0.75rem',fontFamily:FONT}}>{stat.label}</div>
-                    <div style={{fontSize:'0.58rem',fontWeight:600,color:GOLD,fontFamily:FONT}}>Manage →</div>
+                  {label:'Live Listings',value:live,click:()=>{setMFilter('live');nav('manage')}},
+                  {label:'Drafts',value:draft,click:()=>{setMFilter('draft');nav('manage')}},
+                  {label:'New Inquiries',value:newInq,click:()=>nav('inquiries')},
+                  {label:'Rented',value:rented,click:()=>{setMFilter('rented');nav('manage')}},
+                ].map(s=>(
+                  <div key={s.label} onClick={s.click} style={{background:'#fff',border:`1px solid ${R}`,padding:'1.5rem',cursor:'pointer'}}>
+                    <div style={{fontFamily:SF,fontSize:'2.4rem',fontWeight:300,color:BL,lineHeight:1}}>{s.value}</div>
+                    <div style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',margin:'6px 0 12px',fontFamily:F}}>{s.label}</div>
+                    <div style={{fontSize:'11px',fontWeight:600,color:G,fontFamily:F}}>Manage →</div>
                   </div>
                 ))}
               </div>
-              <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem',fontFamily:FONT}}>Recent Listings</div>
+              <Card>
+                <CardTitle title="Recent Listings"/>
                 {listings.slice(0,6).map(l=>(
-                  <div key={l.id} onClick={()=>editListing(l)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:`1px solid ${RULE}`,cursor:'pointer'}}>
+                  <div key={l.id} onClick={()=>editL(l)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:`1px solid ${R}`,cursor:'pointer'}}>
                     <div>
-                      <div style={{fontSize:'0.78rem',fontWeight:500,color:INK,fontFamily:FONT}}>{l.neighborhood} · {l.price}</div>
-                      <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{l.beds||'Studio'} bed · {l.baths} bath</div>
+                      <div style={{fontSize:'13px',fontWeight:500,color:INK,fontFamily:F,marginBottom:'3px'}}>{l.neighborhood} · {l.price}</div>
+                      <div style={{fontSize:'12px',color:'#9B9B98',fontFamily:F}}>{l.beds||'Studio'} bed · {l.baths} bath</div>
                     </div>
-                    <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
+                    <span style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 8px',fontFamily:F,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
                   </div>
                 ))}
-                {listings.length===0 && <div style={{textAlign:'center',padding:'2rem',color:'#9B9B98',fontSize:'0.78rem',fontFamily:FONT}}>No listings yet.</div>}
-              </div>
+                {listings.length===0&&<div style={{textAlign:'center',padding:'2rem',color:'#9B9B98',fontSize:'13px',fontFamily:F}}>No listings yet.</div>}
+              </Card>
             </div>
           )}
 
           {/* ADD / EDIT */}
-          {tab==='add' && (
-            <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'2rem'}}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
-                {([
-                  {label:'Neighborhood',key:'neighborhood',placeholder:'Upper West Side'},
-                  {label:'Price',key:'price',placeholder:'$3,200/mo'},
-                  {label:'Beds (leave blank for Studio)',key:'beds',placeholder:'1, 2, 3...'},
-                  {label:'Baths',key:'baths',placeholder:'1'},
-                  {label:'Lease Length',key:'lease_length',placeholder:'12 months'},
-                  {label:'Concessions',key:'concessions',placeholder:'1 month free'},
-                  {label:'Badge',key:'badge',placeholder:'New, Featured...'},
-                  {label:'Full Address (private)',key:'full_address',placeholder:'123 Main St, Apt 4B'},
-                ] as {label:string,key:string,placeholder:string}[]).map(f=>(
-                  <div key={f.key}>
-                    <label style={s.label}>{f.label}</label>
-                    <input value={(form as any)[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder} style={s.inp} />
+          {tab==='add'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+
+              {/* ADDRESS */}
+              <Card>
+                <CardTitle title="Address"/>
+                <label style={L}>Full Address (private — only neighborhood shown on site)</label>
+                <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
+                  <input value={form.full_address} onChange={e=>setF('full_address',e.target.value)} onBlur={e=>{if(e.target.value&&!form.neighborhood)deriveHood(e.target.value)}} placeholder="e.g. 245 W 75th St, New York, NY 10023" style={{...I,flex:1}}/>
+                  <button onClick={()=>deriveHood(form.full_address)} disabled={hoodLoad||!form.full_address} style={{...PB,background:BL,whiteSpace:'nowrap'}}>{hoodLoad?'Detecting...':'Detect'}</button>
+                </div>
+                {form.neighborhood
+                  ?<div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px',background:'#EEF2F8',border:`1px solid rgba(27,58,107,0.2)`,fontSize:'13px',color:BL,fontWeight:500,fontFamily:F}}>
+                    ✓ Neighborhood: <strong>{form.neighborhood}</strong>
+                    <button onClick={()=>setF('neighborhood','')} style={{background:'none',border:'none',color:'#9B9B98',cursor:'pointer',fontSize:'11px',marginLeft:'auto',fontFamily:F}}>Edit</button>
                   </div>
-                ))}
+                  :<input value={form.neighborhood} onChange={e=>setF('neighborhood',e.target.value)} placeholder="Or type neighborhood manually" style={I}/>
+                }
+              </Card>
+
+              {/* BASICS */}
+              <Card>
+                <CardTitle title="Listing Basics"/>
+                <Row>
+                  <Field label="Monthly Rent">
+                    <input value={form.price} onChange={e=>setF('price',e.target.value)} {...normBlur('price',normalizePrice)} placeholder="e.g. 3400 or $3,400" style={I}/>
+                  </Field>
+                  <Field label="Bedrooms (blank = Studio)">
+                    <input value={form.beds} onChange={e=>setF('beds',e.target.value)} {...normBlur('beds',normalizeBeds)} placeholder="e.g. 2, 2br, 2 bedrooms" style={I}/>
+                  </Field>
+                  <Field label="Bathrooms">
+                    <input value={form.baths} onChange={e=>setF('baths',e.target.value)} {...normBlur('baths',normalizeBaths)} placeholder="e.g. 1, 1.5, 2ba" style={I}/>
+                  </Field>
+                  <Field label="Lease Length">
+                    <input value={form.lease_length} onChange={e=>setF('lease_length',e.target.value)} {...normBlur('lease_length',normalizeLease)} placeholder="e.g. 12, 18mos, flexible" style={I}/>
+                  </Field>
+                  <Field label="Concessions (optional)">
+                    <input value={form.concessions} onChange={e=>setF('concessions',e.target.value)} {...normBlur('concessions',normalizeConcessions)} placeholder="e.g. 1 month free, 2mo" style={I}/>
+                  </Field>
+                  <Field label="Badge (optional)">
+                    <input value={form.badge} onChange={e=>setF('badge',e.target.value)} placeholder="New, Featured, Just Listed..." style={I}/>
+                  </Field>
+                </Row>
+                <div style={{marginTop:'1rem',display:'flex',alignItems:'center',gap:'8px'}}>
+                  <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}}/>
+                  <label htmlFor="op_paid" style={{fontSize:'13px',color:INK,cursor:'pointer',fontFamily:F}}>Owner Paid — No Fee to tenant (shows "No Fee" badge on site)</label>
+                </div>
+              </Card>
+
+              {/* AMENITIES */}
+              <Card>
+                <CardTitle title="Amenities — tap everything that applies"/>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px',marginBottom:'1rem'}}>
+                  {AMENITIES.map(a=>{
+                    const on=form.amenities.includes(a)
+                    return <button key={a} onClick={()=>toggleAm(a)} type="button" style={{padding:'8px 10px',border:`1px solid ${on?BL:R}`,background:on?'#EEF2F8':OFF,color:on?BL:INK,fontSize:'12px',fontWeight:on?600:400,fontFamily:F,cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>{a}</button>
+                  })}
+                </div>
+                <div style={{borderTop:`1px solid ${R}`,paddingTop:'1rem'}}>
+                  <div style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>Other — type and add</div>
+                  <div style={{display:'flex',gap:'8px'}}>
+                    <input value={customAm} onChange={e=>setCustomAm(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addCustomAm()}}} placeholder="e.g. Private terrace, Wine cellar..." style={{...I,flex:1}}/>
+                    <button onClick={addCustomAm} style={{...PB,whiteSpace:'nowrap'}}>+ Add</button>
+                  </div>
+                  {form.amenities.filter(a=>!AMENITIES.includes(a)).length>0&&(
+                    <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginTop:'8px'}}>
+                      {form.amenities.filter(a=>!AMENITIES.includes(a)).map(a=>(
+                        <span key={a} style={{fontSize:'12px',background:'#EEF2F8',color:BL,border:`1px solid rgba(27,58,107,0.2)`,padding:'3px 8px',fontFamily:F,display:'flex',alignItems:'center',gap:'6px'}}>
+                          {a}<button onClick={()=>toggleAm(a)} style={{background:'none',border:'none',color:BL,cursor:'pointer',padding:0,fontSize:'14px',lineHeight:1}}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* DESCRIPTION */}
+              <Card>
+                <CardTitle title="Description — AI writes it from your details"/>
+                <Field label="Anything extra to mention (optional)">
+                  <input value={extraNotes} onChange={e=>setExtraNotes(e.target.value)} placeholder="e.g. Great light, renovated kitchen, quiet block, close to 2/3..." style={{...I,marginBottom:'12px'}}/>
+                </Field>
+                <button onClick={genDesc} disabled={descGen} style={{...PB,background:BL,marginBottom:'1rem'}}>{descGen?'Writing...':'✨ Generate Description with AI'}</button>
+                <Field label="Final Description (editable)">
+                  <textarea value={form.description} onChange={e=>setF('description',e.target.value)} placeholder="Description appears here after generating, or write your own..." rows={5} style={{...I,resize:'vertical'}}/>
+                </Field>
+              </Card>
+
+              {/* ACTIONS */}
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                <button onClick={()=>saveListing('live')} style={PB}>{saveStatus==='saving'?'Saving...':saveStatus==='saved'?'✓ Published!':'Publish Live'}</button>
+                <button onClick={()=>saveListing('draft')} style={GB}>Save Draft</button>
+                {editId&&<button onClick={()=>saveListing('rented')} style={{...GB,color:'#7B5EA7',borderColor:'#D9CCF5',background:'#F3EEFF'}}>Mark Rented</button>}
+                {editId&&<button onClick={()=>{setForm(EMPTY);setEditId(null);back()}} style={{...GB,color:DNG,borderColor:'#FDECEA'}}>Cancel</button>}
+                {saveStatus==='error'&&<span style={{fontSize:'12px',color:DNG,alignSelf:'center',fontFamily:F}}>Something went wrong. Try again.</span>}
               </div>
-              <div style={{marginBottom:'1rem'}}>
-                <label style={s.label}>Description</label>
-                <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Describe the apartment..." rows={4} style={{...s.inp,resize:'vertical'}} />
-              </div>
-              <div style={{marginBottom:'1rem'}}>
-                <label style={s.label}>Amenities (comma separated)</label>
-                <input value={form.amenities as string} onChange={e=>setForm(p=>({...p,amenities:e.target.value}))} placeholder="Doorman, Gym, Laundry in unit, Elevator..." style={s.inp} />
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1.5rem'}}>
-                <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}} />
-                <label htmlFor="op_paid" style={{fontSize:'0.75rem',color:INK,cursor:'pointer',fontFamily:FONT}}>Owner Paid — No Fee listing</label>
-              </div>
-              <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
-                <button onClick={()=>saveListing('live')} style={s.btn}>{saveStatus==='saving'?'Saving...':saveStatus==='saved'?'✓ Published!':'Publish Live'}</button>
-                <button onClick={()=>saveListing('draft')} style={s.btnGhost}>Save Draft</button>
-                {editId && <button onClick={()=>saveListing('rented')} style={{...s.btnGhost,color:'#7B5EA7',borderColor:'#D9CCF5',background:'#F3EEFF'}}>Mark Rented</button>}
-                {editId && <button onClick={()=>{setForm(EMPTY);setEditId(null);goBack()}} style={{...s.btnGhost,color:DANGER,borderColor:'#FDECEA'}}>Cancel</button>}
-              </div>
-              {saveStatus==='error' && <div style={{marginTop:'0.75rem',fontSize:'0.7rem',color:DANGER,fontFamily:FONT}}>Something went wrong. Try again.</div>}
             </div>
           )}
 
           {/* MANAGE */}
-          {tab==='manage' && (
+          {tab==='manage'&&(
             <div>
-              <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:'8px',marginBottom:'1.5rem',flexWrap:'wrap'}}>
                 {(['all','live','draft','rented'] as string[]).map(f=>(
-                  <button key={f} onClick={()=>setManageFilter(f)} style={{...s.btnGhost,background:manageFilter===f?INK:'#fff',color:manageFilter===f?'#fff':'#6B6B68',padding:'0.4rem 1rem',fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase'}}>
-                    {f.charAt(0).toUpperCase()+f.slice(1)}
-                  </button>
+                  <button key={f} onClick={()=>setMFilter(f)} style={{...GB,background:mFilter===f?INK:'#fff',color:mFilter===f?'#fff':'#6B6B68',fontSize:'11px',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',padding:'6px 14px'}}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
                 ))}
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {filteredListings.map(l=>(
-                  <div key={l.id} style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                {filtL.map(l=>(
+                  <div key={l.id} style={{background:'#fff',border:`1px solid ${R}`,padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
-                      <div style={{fontSize:'0.85rem',fontWeight:500,color:INK,fontFamily:FONT,marginBottom:'0.2rem'}}>{l.neighborhood} · {l.price}</div>
-                      <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{l.beds||'Studio'} bed · {l.baths} bath · {l.lease_length}{l.op_paid?' · No Fee':''}</div>
+                      <div style={{fontSize:'13px',fontWeight:500,color:INK,fontFamily:F,marginBottom:'3px'}}>{l.neighborhood} · {l.price}</div>
+                      <div style={{fontSize:'12px',color:'#9B9B98',fontFamily:F}}>{l.beds||'Studio'} bed · {l.baths} bath · {l.lease_length}{l.op_paid?' · No Fee':''}</div>
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                      <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
-                      <button onClick={()=>editListing(l)} style={{fontSize:'0.62rem',fontWeight:500,color:BLUE,background:'none',border:'none',cursor:'pointer',fontFamily:FONT}}>Edit</button>
-                      <button onClick={()=>deleteListing(l.id!)} style={{fontSize:'0.62rem',fontWeight:500,color:DANGER,background:'none',border:'none',cursor:'pointer',fontFamily:FONT}}>Delete</button>
+                    <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                      <span style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 8px',fontFamily:F,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
+                      <button onClick={()=>editL(l)} style={{fontSize:'12px',fontWeight:500,color:BL,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Edit</button>
+                      <button onClick={()=>delListing(l.id!)} style={{fontSize:'12px',fontWeight:500,color:DNG,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Delete</button>
                     </div>
                   </div>
                 ))}
-                {filteredListings.length===0 && <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${RULE}`,fontFamily:FONT}}>No listings found.</div>}
+                {filtL.length===0&&<div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'13px',background:'#fff',border:`1px solid ${R}`,fontFamily:F}}>No listings found.</div>}
               </div>
             </div>
           )}
 
           {/* INQUIRIES */}
-          {tab==='inquiries' && (
+          {tab==='inquiries'&&(
             <div>
-              <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
-                {([
-                  {key:'all',label:'All'},
-                  {key:'renter',label:'Renters'},
-                  {key:'landlord',label:'Landlords & Property Owners'},
-                ] as {key:string,label:string}[]).map(f=>(
-                  <button key={f.key} onClick={()=>setInquiryFilter(f.key)} style={{...s.btnGhost,background:inquiryFilter===f.key?INK:'#fff',color:inquiryFilter===f.key?'#fff':'#6B6B68',padding:'0.4rem 1rem',fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase'}}>
-                    {f.label}
-                  </button>
+              <div style={{display:'flex',gap:'8px',marginBottom:'1.5rem',flexWrap:'wrap'}}>
+                {[{k:'all',l:'All'},{k:'renter',l:'Renters'},{k:'landlord',l:'Landlords & Property Owners'}].map(f=>(
+                  <button key={f.k} onClick={()=>setIFilter(f.k)} style={{...GB,background:iFilter===f.k?INK:'#fff',color:iFilter===f.k?'#fff':'#6B6B68',fontSize:'11px',fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',padding:'6px 14px'}}>{f.l}</button>
                 ))}
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {filteredInquiries.map(i=>(
-                  <div key={i.id} style={{background:'#fff',border:`1px solid ${expandedInquiry===i.id?GOLD:RULE}`}}>
-                    <div style={{padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setExpandedInquiry(expandedInquiry===i.id?null:i.id)}>
-                      <div>
-                        <div style={{fontSize:'0.85rem',fontWeight:600,color:INK,fontFamily:FONT,marginBottom:'0.2rem'}}>{i.first_name} {i.last_name}</div>
-                        <div style={{fontSize:'0.62rem',color:'#9B9B98',fontFamily:FONT}}>{i.inquiry_type==='landlord'?'Landlord / Property Owner':'Renter'} · {i.neighborhood||'Any'} · {i.budget||'Flexible'} · {new Date(i.created_at).toLocaleDateString()}</div>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                {filtI.map(inq=>{
+                  const expanded=expandInq===inq.id
+                  const ek=`${inq.id}-email`,sk=`${inq.id}-sms`
+                  return(
+                    <div key={inq.id} style={{background:'#fff',border:`1px solid ${expanded?G:R}`}}>
+                      <div onClick={()=>setExpandInq(expanded?null:inq.id)} style={{padding:'1.25rem 1.5rem',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}}>
+                        <div>
+                          <div style={{fontSize:'13px',fontWeight:600,color:INK,fontFamily:F,marginBottom:'3px'}}>{inq.first_name} {inq.last_name}</div>
+                          <div style={{fontSize:'12px',color:'#9B9B98',fontFamily:F}}>{inq.inquiry_type==='landlord'?'Landlord / Property Owner':'Renter'} · {inq.neighborhood||'Any'} · {inq.budget||'Flexible'} · {new Date(inq.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                          <span style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 8px',fontFamily:F,background:inq.status==='new'?'#EEF2F8':inq.status==='contacted'?'#E8F5EE':PAPER,color:inq.status==='new'?BL:inq.status==='contacted'?'#1A6B3A':'#6B6B68'}}>{inq.status}</span>
+                          <span style={{color:'#9B9B98',fontSize:'12px'}}>{expanded?'▲':'▼'}</span>
+                        </div>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                        <span style={{fontSize:'0.52rem',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'0.2rem 0.6rem',fontFamily:FONT,background:i.status==='new'?'#EEF2F8':i.status==='contacted'?'#E8F5EE':PAPER,color:i.status==='new'?BLUE:i.status==='contacted'?'#1A6B3A':'#6B6B68'}}>{i.status}</span>
-                        <span style={{color:'#9B9B98',fontSize:'0.75rem'}}>{expandedInquiry===i.id?'▲':'▼'}</span>
-                      </div>
+                      {expanded&&(
+                        <div style={{borderTop:`1px solid ${R}`,padding:'1.25rem 1.5rem'}}>
+                          {/* CONTACT ACTIONS */}
+                          <div style={{display:'flex',gap:'8px',marginBottom:'1.25rem',flexWrap:'wrap',alignItems:'center'}}>
+                            {inq.email&&<a href={`mailto:${inq.email}`} style={{...PB,textDecoration:'none',display:'inline-block'}}>✉ Email</a>}
+                            {inq.phone&&<a href={`tel:${inq.phone}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block'}}>📞 Call</a>}
+                            {inq.phone&&<a href={`sms:${inq.phone}`} style={{...GB,textDecoration:'none',display:'inline-block'}}>💬 Text</a>}
+                            <select value={inq.status} onChange={e=>updInqStatus(inq.id,e.target.value)} style={{marginLeft:'auto',fontSize:'12px',fontFamily:F,background:OFF,border:`1px solid ${R}`,padding:'6px 10px',color:INK,outline:'none'}}>
+                              <option value="new">New</option>
+                              <option value="contacted">Contacted</option>
+                              <option value="closed">Closed</option>
+                            </select>
+                          </div>
+
+                          {/* CONTACT DETAILS */}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'1rem',fontSize:'13px',color:'#6B6B68',fontFamily:F}}>
+                            <div><strong style={{color:INK}}>Email:</strong> {inq.email||'—'}</div>
+                            <div><strong style={{color:INK}}>Phone:</strong> {inq.phone||'—'}</div>
+                            <div><strong style={{color:INK}}>Neighborhood:</strong> {inq.neighborhood||'Any'}</div>
+                            <div><strong style={{color:INK}}>Budget:</strong> {inq.budget||'Flexible'}</div>
+                          </div>
+
+                          {inq.message&&<div style={{background:OFF,border:`1px solid ${R}`,padding:'10px 14px',fontSize:'13px',color:'#6B6B68',lineHeight:1.7,marginBottom:'1rem',fontFamily:F}}>{inq.message}</div>}
+
+                          {/* AI COMPOSE */}
+                          <div style={{marginBottom:'1rem'}}>
+                            <div style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>AI Draft Response</div>
+                            <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
+                              <button onClick={()=>doCompose(inq.id,'email',inq)} disabled={compose[ek]?.load} style={{...PB,background:BL,fontSize:'11px'}}>{compose[ek]?.load?'Writing...':'✨ Draft Email'}</button>
+                              <button onClick={()=>doCompose(inq.id,'sms',inq)} disabled={compose[sk]?.load} style={{...PB,background:'#6B6B68',fontSize:'11px'}}>{compose[sk]?.load?'Writing...':'✨ Draft Text'}</button>
+                            </div>
+                            {compose[ek]?.text&&(
+                              <div style={{marginBottom:'8px'}}>
+                                <div style={{fontSize:'10px',fontWeight:600,color:'#9B9B98',marginBottom:'4px',fontFamily:F}}>Email Draft</div>
+                                <textarea defaultValue={compose[ek].text} rows={5} style={{...I,fontSize:'12px',lineHeight:1.7}}/>
+                                <a href={`mailto:${inq.email}?body=${encodeURIComponent(compose[ek].text)}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block',fontSize:'11px',marginTop:'6px'}}>Open in Mail →</a>
+                              </div>
+                            )}
+                            {compose[sk]?.text&&(
+                              <div>
+                                <div style={{fontSize:'10px',fontWeight:600,color:'#9B9B98',marginBottom:'4px',fontFamily:F}}>Text Draft</div>
+                                <textarea defaultValue={compose[sk].text} rows={3} style={{...I,fontSize:'12px',lineHeight:1.7}}/>
+                                <a href={`sms:${inq.phone}?body=${encodeURIComponent(compose[sk].text)}`} style={{...PB,background:'#6B6B68',textDecoration:'none',display:'inline-block',fontSize:'11px',marginTop:'6px'}}>Open in Messages →</a>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* NOTES */}
+                          <label style={L}>Internal Notes</label>
+                          <textarea value={inqNotes[inq.id]||''} onChange={e=>setInqNotes(p=>({...p,[inq.id]:e.target.value}))} placeholder="Add private notes about this inquiry..." rows={3} style={{...I,resize:'vertical',marginBottom:'8px'}}/>
+                          <button onClick={()=>saveInqNotes(inq.id)} style={{...PB,fontSize:'11px',padding:'6px 14px'}}>Save Notes</button>
+                        </div>
+                      )}
                     </div>
-                    {expandedInquiry===i.id && (
-                      <div style={{borderTop:`1px solid ${RULE}`,padding:'1.25rem 1.5rem'}}>
-                        <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.25rem',flexWrap:'wrap',alignItems:'center'}}>
-                          {i.email && <a href={`mailto:${i.email}`} style={{...s.btn,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>✉ Email</a>}
-                          {i.phone && <a href={`tel:${i.phone}`} style={{...s.btn,background:BLUE,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>📞 Call</a>}
-                          {i.phone && <a href={`sms:${i.phone}`} style={{...s.btnGhost,textDecoration:'none',display:'inline-block',fontSize:'0.6rem'}}>💬 Text</a>}
-                          <select value={i.status} onChange={e=>updateInquiryStatus(i.id,e.target.value)} style={{marginLeft:'auto',fontSize:'0.62rem',fontFamily:FONT,background:OFF,border:`1px solid ${RULE}`,padding:'0.4rem 0.7rem',color:INK,outline:'none'}}>
-                            <option value="new">New</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="closed">Closed</option>
-                          </select>
-                        </div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'1rem',fontSize:'0.72rem',color:'#6B6B68',fontFamily:FONT}}>
-                          <div><strong style={{color:INK}}>Email:</strong> {i.email||'—'}</div>
-                          <div><strong style={{color:INK}}>Phone:</strong> {i.phone||'—'}</div>
-                          <div><strong style={{color:INK}}>Neighborhood:</strong> {i.neighborhood||'Any'}</div>
-                          <div><strong style={{color:INK}}>Budget:</strong> {i.budget||'Flexible'}</div>
-                        </div>
-                        {i.message && <div style={{background:OFF,border:`1px solid ${RULE}`,padding:'0.85rem 1rem',fontSize:'0.75rem',color:'#6B6B68',lineHeight:1.7,marginBottom:'1rem',fontFamily:FONT}}>{i.message}</div>}
-                        <label style={s.label}>Internal Notes</label>
-                        <textarea value={inquiryNotes[i.id]||''} onChange={e=>setInquiryNotes(p=>({...p,[i.id]:e.target.value}))} placeholder="Add private notes..." rows={3} style={{...s.inp,resize:'vertical',marginBottom:'0.5rem'}} />
-                        <button onClick={()=>saveNotes(i.id)} style={{...s.btn,fontSize:'0.58rem',padding:'0.5rem 1rem'}}>Save Notes</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {filteredInquiries.length===0 && <div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'0.78rem',background:'#fff',border:`1px solid ${RULE}`,fontFamily:FONT}}>No inquiries found.</div>}
+                  )
+                })}
+                {filtI.length===0&&<div style={{textAlign:'center',padding:'3rem',color:'#9B9B98',fontSize:'13px',background:'#fff',border:`1px solid ${R}`,fontFamily:F}}>No inquiries found.</div>}
               </div>
             </div>
           )}
 
-          {/* BIO & PROFILE */}
-          {tab==='bio' && (
+          {/* BIO */}
+          {tab==='bio'&&(
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.5rem'}}>
-              {/* LEFT — Photo + Contact */}
               <div style={{display:'flex',flexDirection:'column',gap:'1.5rem'}}>
-                <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
-                  <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem',fontFamily:FONT}}>Profile Photo</div>
-                  {photoUrl
-                    ? <img src={photoUrl} alt="Profile" style={{width:'130px',height:'160px',objectFit:'cover',objectPosition:'center top',marginBottom:'1rem',display:'block',border:`1px solid ${RULE}`}} />
-                    : <div style={{width:'130px',height:'160px',background:PAPER,border:`1px solid ${RULE}`,marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',color:'#9B9B98',fontFamily:FONT}}>No photo</div>
-                  }
-                  <input ref={photoInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{display:'none'}} />
-                  <button onClick={()=>photoInputRef.current?.click()} disabled={photoUploading} style={{...s.btn,fontSize:'0.58rem',padding:'0.6rem 1.1rem',display:'block',marginBottom:'0.4rem'}}>
-                    {photoUploading?'Uploading...':photoUrl?'Replace Photo':'Upload Photo'}
-                  </button>
-                  <div style={{fontSize:'0.6rem',color:'#9B9B98',fontFamily:FONT}}>Appears on the public About section.</div>
-                </div>
-
-                <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
-                  <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1rem',fontFamily:FONT}}>Contact Details</div>
-                  <div style={{marginBottom:'0.75rem'}}><label style={s.label}>Phone</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="(212) 555-0100" style={s.inp} /></div>
-                  <div style={{marginBottom:'1rem'}}><label style={s.label}>Email</label><input value={contactEmail} onChange={e=>setContactEmail(e.target.value)} placeholder="leo@leowilliamsnyc.com" style={s.inp} /></div>
-                  <button onClick={saveProfile} style={s.btn}>{profileSaved?'✓ Saved!':'Save Profile'}</button>
-                </div>
+                <Card>
+                  <CardTitle title="Profile Photo"/>
+                  {photoUrl?<img src={photoUrl} alt="Profile" style={{width:'130px',height:'160px',objectFit:'cover',objectPosition:'center top',marginBottom:'1rem',display:'block',border:`1px solid ${R}`}}/>:<div style={{width:'130px',height:'160px',background:PAPER,border:`1px solid ${R}`,marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',color:'#9B9B98',fontFamily:F}}>No photo</div>}
+                  <input ref={photoRef} type="file" accept="image/*" onChange={uploadPhoto} style={{display:'none'}}/>
+                  <button onClick={()=>photoRef.current?.click()} disabled={photoUp} style={{...PB,fontSize:'11px',display:'block',marginBottom:'6px'}}>{photoUp?'Uploading...':photoUrl&&photoUrl!=='/leo-headshot.jpg'?'Replace Photo':'Upload Photo'}</button>
+                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>Appears on the public About section.</div>
+                </Card>
+                <Card>
+                  <CardTitle title="Contact Details"/>
+                  <div style={{marginBottom:'12px'}}><label style={L}>Phone</label><input value={pPhone} onChange={e=>setPPhone(e.target.value)} placeholder="(212) 555-0100" style={I}/></div>
+                  <div style={{marginBottom:'16px'}}><label style={L}>Email</label><input value={pEmail} onChange={e=>setPEmail(e.target.value)} placeholder="leo@leowilliamsnyc.com" style={I}/></div>
+                  <button onClick={saveProf} style={PB}>{profSaved?'✓ Saved!':'Save Profile'}</button>
+                </Card>
               </div>
-
-              {/* RIGHT — Bio */}
-              <div style={{background:'#fff',border:`1px solid ${RULE}`,padding:'1.5rem'}}>
-                <div style={{fontSize:'0.58rem',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'1.25rem',fontFamily:FONT}}>Generate Bio with AI</div>
-                {([
-                  {label:"What brought you to NYC real estate?",value:bioQ1,set:setBioQ1},
-                  {label:"What makes you different from other agents?",value:bioQ2,set:setBioQ2},
-                  {label:"What do your clients say about working with you?",value:bioQ3,set:setBioQ3},
-                ] as {label:string,value:string,set:(v:string)=>void}[]).map((q,idx)=>(
+              <Card>
+                <CardTitle title="Generate Bio with AI"/>
+                {[
+                  {label:"What brought you to NYC real estate?",value:bQ1,set:setBQ1},
+                  {label:"What makes you different from other agents?",value:bQ2,set:setBQ2},
+                  {label:"What do your clients say about working with you?",value:bQ3,set:setBQ3},
+                ].map((q,idx)=>(
                   <div key={idx} style={{marginBottom:'1rem'}}>
-                    <label style={{...s.label,textTransform:'none',letterSpacing:0,fontSize:'0.68rem',color:'#6B6B68'}}>{q.label}</label>
-                    <textarea value={q.value} onChange={e=>q.set(e.target.value)} rows={2} style={{...s.inp,resize:'vertical'}} />
+                    <label style={{...L,textTransform:'none',letterSpacing:0,fontSize:'12px',color:'#6B6B68'}}>{q.label}</label>
+                    <textarea value={q.value} onChange={e=>q.set(e.target.value)} rows={2} style={{...I,resize:'vertical'}}/>
                   </div>
                 ))}
-                <button onClick={generateBio} disabled={bioGenerating} style={{...s.btn,background:BLUE,marginBottom:'1.5rem'}}>
-                  {bioGenerating?'Generating...':'✨ Generate Bio'}
-                </button>
-                <label style={s.label}>Bio Text</label>
-                <textarea value={bio} onChange={e=>setBio(e.target.value)} rows={8} placeholder="Your bio will appear here..." style={{...s.inp,resize:'vertical',marginBottom:'1rem'}} />
-                <button onClick={saveProfile} style={s.btn}>{profileSaved?'✓ Saved!':'Save Bio'}</button>
-              </div>
+                <button onClick={genBio} disabled={bioGen} style={{...PB,background:BL,marginBottom:'1.5rem'}}>{bioGen?'Generating...':'✨ Generate Bio'}</button>
+                <label style={L}>Bio Text</label>
+                <textarea value={bio} onChange={e=>setBio(e.target.value)} rows={8} placeholder="Your bio will appear here..." style={{...I,resize:'vertical',marginBottom:'1rem'}}/>
+                <button onClick={saveProf} style={PB}>{profSaved?'✓ Saved!':'Save Bio'}</button>
+              </Card>
             </div>
           )}
+
         </div>
-      </main>
+      </div>
     </div>
   )
 }
