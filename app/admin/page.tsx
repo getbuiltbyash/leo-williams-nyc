@@ -381,7 +381,7 @@ export default function Admin(){
           {/* DASHBOARD */}
           {tab==='dashboard'&&(
             <div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'1rem',marginBottom:'2rem'}}>
+              <div className="admin-stats-grid" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'1rem',marginBottom:'2rem'}}>
                 {[
                   {label:'Live Listings',value:live,click:()=>{setMFilter('live');nav('manage')}},
                   {label:'Drafts',value:draft,click:()=>{setMFilter('draft');nav('manage')}},
