@@ -48,6 +48,7 @@ export default function Home() {
   const [searchHood, setSearchHood] = useState('Any')
   const [selectedHoods, setSelectedHoods] = useState<string[]>([])
   const [selectedBeds, setSelectedBeds] = useState<string[]>([])
+  const [selectedBaths, setSelectedBaths] = useState<string[]>([])
   const [showFilter, setShowFilter] = useState(false)
   const [searchBeds, setSearchBeds] = useState('Any')
   const [searchMin, setSearchMin] = useState('No min')
@@ -90,6 +91,10 @@ export default function Home() {
     if (data) setProfile(data)
   }
 
+  function toggleBath(bath: string) {
+    setSelectedBaths(p => p.includes(bath) ? p.filter(b => b !== bath) : [...p, bath])
+  }
+
   function toggleBed(bed: string) {
     setSelectedBeds(p => p.includes(bed) ? p.filter(b => b !== bed) : [...p, bed])
   }
@@ -107,13 +112,21 @@ export default function Home() {
       const bv = bedsLabel(l.beds)
       const price = parseInt((l.price||'0').replace(/[^0-9]/g,'')) || 0
       const hoodMatch = selectedHoods.length === 0 || selectedHoods.includes(l.neighborhood)
+      const bathsMatch = selectedBaths.length === 0 || selectedBaths.some(b => {
+        const lb = parseFloat(String(l.baths||'0'))
+        if(b === '1') return lb === 1
+        if(b === '1.5') return lb === 1.5
+        if(b === '2') return lb === 2
+        if(b === '2+') return lb >= 2
+        return true
+      })
       const bedsMatch = selectedBeds.length === 0 ||
         (selectedBeds.includes('Studio') && bv === 'Studio') ||
         (selectedBeds.includes('1 Bed') && bv === '1') ||
         (selectedBeds.includes('2 Bed') && bv === '2') ||
         (selectedBeds.includes('3+ Bed') && parseInt(bv) >= 3)
       const priceMatch = price >= minP && price <= maxP
-      return hoodMatch && bedsMatch && priceMatch
+      return hoodMatch && bedsMatch && bathsMatch && priceMatch
     })
     setFiltered(result)
     setShowFilter(false)
@@ -246,17 +259,31 @@ export default function Home() {
         {/* FILTER PANEL */}
         {showFilter && (
           <div style={{background:'var(--off)',border:'1px solid var(--rule)',padding:'1.5rem',marginBottom:'1.5rem'}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'1.5rem',marginBottom:'1.25rem'}}>
-              {/* NEIGHBORHOODS */}
+            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',gap:'1.5rem',marginBottom:'1.25rem'}}>
+              {/* NEIGHBORHOODS grouped by borough */}
               <div>
                 <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Neighborhood</div>
-                <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'200px',overflowY:'auto'}}>
-                  {Array.from(new Set(listings.map(l=>l.neighborhood))).sort().map(hood=>(
-                    <label key={hood} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)'}}>
-                      <input type="checkbox" checked={selectedHoods.includes(hood)} onChange={()=>toggleHood(hood)} style={{width:'15px',height:'15px',accentColor:'var(--blue)',cursor:'pointer'}}/>
-                      {hood}
-                    </label>
-                  ))}
+                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'220px',overflowY:'auto'}}>
+                  {(()=>{
+                    const hoods = Array.from(new Set(listings.map(l=>l.neighborhood))).sort()
+                    const boroughs: Record<string,string[]> = {
+                      Manhattan: hoods.filter(h => !h.includes('Brooklyn') && !h.includes('Queens') && !h.includes('Bronx') && !h.includes('Staten')),
+                      Brooklyn: hoods.filter(h => h.includes('Brooklyn')),
+                      Queens: hoods.filter(h => h.includes('Queens')),
+                      'The Bronx': hoods.filter(h => h.includes('Bronx')),
+                    }
+                    return Object.entries(boroughs).filter(([,hs])=>hs.length>0).map(([borough,hs])=>(
+                      <div key={borough}>
+                        <div style={{fontSize:'0.52rem',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--ink4)',padding:'6px 0 3px',fontFamily:'var(--sans)'}}>{borough}</div>
+                        {hs.map(hood=>(
+                          <label key={hood} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)',padding:'2px 0 2px 8px'}}>
+                            <input type="checkbox" checked={selectedHoods.includes(hood)} onChange={()=>toggleHood(hood)} style={{width:'14px',height:'14px',accentColor:'var(--blue)',cursor:'pointer'}}/>
+                            {hood.replace(', Brooklyn','').replace(', Queens','').replace(', Bronx','')}
+                          </label>
+                        ))}
+                      </div>
+                    ))
+                  })()}
                 </div>
               </div>
               {/* BEDROOMS */}
@@ -265,8 +292,20 @@ export default function Home() {
                 <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
                   {['Studio','1 Bed','2 Bed','3+ Bed'].map(b=>(
                     <label key={b} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)'}}>
-                      <input type="checkbox" checked={selectedBeds.includes(b)} onChange={()=>toggleBed(b)} style={{width:'15px',height:'15px',accentColor:'var(--blue)',cursor:'pointer'}}/>
+                      <input type="checkbox" checked={selectedBeds.includes(b)} onChange={()=>toggleBed(b)} style={{width:'14px',height:'14px',accentColor:'var(--blue)',cursor:'pointer'}}/>
                       {b}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {/* BATHROOMS */}
+              <div>
+                <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Bathrooms</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                  {['1','1.5','2','2+'].map(b=>(
+                    <label key={b} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',cursor:'pointer',color:'var(--ink2)',fontFamily:'var(--sans)'}}>
+                      <input type="checkbox" checked={selectedBaths.includes(b)} onChange={()=>toggleBath(b)} style={{width:'14px',height:'14px',accentColor:'var(--blue)',cursor:'pointer'}}/>
+                      {b} {b==='2+'?'or more':'Bath'}
                     </label>
                   ))}
                 </div>
@@ -288,13 +327,18 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div style={{display:'flex',gap:'8px',borderTop:'1px solid var(--rule)',paddingTop:'1rem'}}>
-              <button onClick={applyFilter} style={{background:'var(--ink)',color:'var(--white)',border:'none',padding:'0.7rem 1.5rem',fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',cursor:'pointer',fontFamily:'var(--sans)'}}>
-                Apply Filters
-              </button>
-              <button onClick={()=>{setSelectedHoods([]);setSelectedBeds([]);setSearchMin('No min');setSearchMax('No max');setFiltered(listings);setShowFilter(false)}} style={{background:'var(--white)',color:'var(--ink3)',border:'1px solid var(--rule)',padding:'0.7rem 1.25rem',fontSize:'0.6rem',cursor:'pointer',fontFamily:'var(--sans)'}}>
-                Clear All
-              </button>
+            <div style={{display:'flex',gap:'8px',borderTop:'1px solid var(--rule)',paddingTop:'1rem',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between'}}>
+              <div style={{display:'flex',gap:'8px'}}>
+                <button onClick={applyFilter} style={{background:'var(--ink)',color:'var(--white)',border:'none',padding:'0.7rem 1.5rem',fontSize:'0.6rem',fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',cursor:'pointer',fontFamily:'var(--sans)'}}>
+                  Apply Filters
+                </button>
+                <button onClick={()=>{setSelectedHoods([]);setSelectedBeds([]);setSelectedBaths([]);setSearchMin('No min');setSearchMax('No max');setFiltered(listings);setShowFilter(false)}} style={{background:'var(--white)',color:'var(--ink3)',border:'1px solid var(--rule)',padding:'0.7rem 1.25rem',fontSize:'0.6rem',cursor:'pointer',fontFamily:'var(--sans)'}}>
+                  Clear All
+                </button>
+              </div>
+              <a href="#contact" onClick={()=>setShowFilter(false)} style={{fontSize:'0.7rem',color:'var(--blue)',fontFamily:'var(--sans)',textDecoration:'none',fontWeight:500}}>
+                Don&apos;t see what you need? Tell me exactly what you&apos;re looking for →
+              </a>
             </div>
           </div>
         )}
@@ -482,7 +526,7 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer>
-        <div className="footer-logo">Leo Williams · Licensed Real Estate Salesperson · <a href="https://digiuliogroup.com" target="_blank" rel="noopener noreferrer" style={{color:'var(--gold)',textDecoration:'none'}}>DiGiulio Group</a></div>
+        <div className="footer-logo" style={{whiteSpace:'nowrap'}}>Leo Williams · Licensed Real Estate Salesperson · <a href="https://digiuliogroup.com" target="_blank" rel="noopener noreferrer" style={{color:'var(--gold)',textDecoration:'none',whiteSpace:'nowrap'}}>DiGiulio Group</a></div>
         <ul className="footer-links">
           <li><a href="#listings">Listings</a></li>
           <li><a href="#neighborhoods">Neighborhoods</a></li>
