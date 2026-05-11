@@ -295,10 +295,7 @@ export default function Home() {
       {/* ABOUT */}
       <section className="about-sec" id="about">
         <div className="about-img-wrap">
-          {profile.photo_url
-            ? <img src={profile.photo_url} alt="Leo Williams" />
-            : <div style={{width:'100%',height:'100%',minHeight:'520px',background:'var(--paper)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--ink4)',fontSize:'0.78rem'}}>Photo coming soon</div>
-          }
+          <img src={profile.photo_url || '/leo-headshot.jpg'} alt="Leo Williams" style={{width:'100%',height:'100%',minHeight:'520px',objectFit:'cover',objectPosition:'center top',display:'block'}} />
         </div>
         <div className="about-content">
           <div className="sec-label">About Leo</div>

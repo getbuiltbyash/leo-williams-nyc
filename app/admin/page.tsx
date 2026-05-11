@@ -71,7 +71,7 @@ export default function Admin() {
   const [bio, setBio] = useState('')
   const [phone, setPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('/leo-headshot.jpg')
   const [bioQ1, setBioQ1] = useState('')
   const [bioQ2, setBioQ2] = useState('')
   const [bioQ3, setBioQ3] = useState('')
@@ -222,34 +222,20 @@ export default function Admin() {
 
         {/* NAV */}
         <nav style={{flex:1,paddingTop:'0.5rem'}}>
-          {/* Overview */}
-          <a href="#" onClick={e=>{e.preventDefault();navTo('dashboard')}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='dashboard'?600:400,color:tab==='dashboard'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='dashboard'?GOLD:'transparent'}`,background:tab==='dashboard'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
-            Overview
-          </a>
+          <div onClick={()=>navTo('dashboard')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='dashboard'?700:400,color:'#ffffff',textDecoration:'none',borderLeft:tab==='dashboard'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='dashboard'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Overview</div>
 
-          {/* LISTINGS section */}
-          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Listings</div>
-          {[
-            {id:'add', label: editId?'Edit Listing':'Add New Listing'},
-            {id:'manage', label:'Manage Listings'},
-          ].map(item=>(
-            <a key={item.id} href="#" onClick={e=>{e.preventDefault();if(item.id==='add'){setForm(EMPTY);setEditId(null);}navTo(item.id)}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab===item.id?600:400,color:tab===item.id?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab===item.id?GOLD:'transparent'}`,background:tab===item.id?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
-              {item.label}
-            </a>
-          ))}
+          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Listings</div>
+          <div onClick={()=>{setForm(EMPTY);setEditId(null);navTo('add')}} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='add'?700:400,color:'#ffffff',borderLeft:tab==='add'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='add'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Add New Listing</div>
+          <div onClick={()=>{setManageFilter('all');navTo('manage')}} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='manage'?700:400,color:'#ffffff',borderLeft:tab==='manage'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='manage'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>Manage Listings</div>
 
-          {/* INQUIRIES section */}
-          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Inquiries</div>
-          <a href="#" onClick={e=>{e.preventDefault();navTo('inquiries')}} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='inquiries'?600:400,color:tab==='inquiries'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='inquiries'?GOLD:'transparent'}`,background:tab==='inquiries'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
+          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Inquiries</div>
+          <div onClick={()=>navTo('inquiries')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='inquiries'?700:400,color:'#ffffff',borderLeft:tab==='inquiries'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='inquiries'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span>All Inquiries</span>
-            {newInquiries>0 && <span style={{background:GOLD,color:'#fff',fontSize:'0.52rem',fontWeight:700,padding:'0.1rem 0.45rem',borderRadius:'10px',fontFamily:FONT}}>{newInquiries}</span>}
-          </a>
+            {newInquiries>0 && <span style={{background:GOLD,color:'#fff',fontSize:'0.52rem',fontWeight:700,padding:'0.1rem 0.45rem',borderRadius:'10px'}}>{newInquiries}</span>}
+          </div>
 
-          {/* PROFILE section */}
-          <div style={{padding:'0.85rem 1.25rem 0.2rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.22em',textTransform:'uppercase',color:'rgba(255,255,255,0.22)',fontFamily:FONT}}>Profile</div>
-          <a href="#" onClick={e=>{e.preventDefault();navTo('bio')}} style={{display:'flex',alignItems:'center',padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='bio'?600:400,color:tab==='bio'?'#ffffff':'rgba(255,255,255,0.6)',textDecoration:'none',borderLeft:`2px solid ${tab==='bio'?GOLD:'transparent'}`,background:tab==='bio'?'rgba(255,255,255,0.07)':'transparent',fontFamily:FONT}}>
-            My Bio & Story
-          </a>
+          <div style={{padding:'0.85rem 1.25rem 0.25rem',fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)'}}>Profile</div>
+          <div onClick={()=>navTo('bio')} style={{padding:'0.72rem 1.25rem',fontSize:'0.72rem',fontWeight:tab==='bio'?700:400,color:'#ffffff',borderLeft:tab==='bio'?`3px solid ${GOLD}`:'3px solid transparent',background:tab==='bio'?'rgba(255,255,255,0.1)':'transparent',cursor:'pointer',userSelect:'none'}}>My Bio & Story</div>
         </nav>
 
         {/* FOOTER */}
