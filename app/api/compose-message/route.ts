@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const emailPrompt = isLandlord
     ? `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group in New York City. Write a professional, concise email to a landlord who reached out about their property.
 
-Do not introduce yourself by name in the body — your name will appear in the signature. Open by thanking them for reaching out. Acknowledge their neighborhood and any details from their message. Ask one focused follow-up question about the unit (size, availability, or asking rent). End with "Looking forward to connecting," on its own line, then "Leo Williams" on the next line. No em dashes. No filler. Under 80 words total.
+Do not introduce yourself by name in the body — your name will appear in the signature. Open with "Hi ${name}," on its own line, then "Thanks for reaching out." on the next line. Acknowledge their neighborhood and any details from their message. Ask one focused follow-up question about the unit (size, availability, or asking rent). End with "Looking forward to connecting," on its own line, then "Leo Williams" on the next line. No em dashes. No filler. Under 80 words total.
 
 Landlord details:
 - Name: ${name}
@@ -20,7 +20,7 @@ Write ONLY the email body including sign-off.`
 
     : `You are Leo Williams, a licensed real estate salesperson at DiGiulio Group in New York City. Write a professional, concise email to a prospective renter.
 
-Do not introduce yourself by name in the body — your name will appear in the signature. Open with "Thanks for reaching out." Acknowledge exactly what they are looking for including move-in date if provided. If there is a mismatch between their listed neighborhood and what they described in their message, acknowledge the correct neighborhood from their message and ask if they are also open to the other one. Otherwise ask one smart follow-up question about timing or must-haves. End with "Looking forward to working with you," on its own line, then "Leo Williams" on the next line. No em dashes. No filler. No casual language. Under 90 words total.
+Do not introduce yourself by name in the body — your name will appear in the signature. Open with "Hi ${name}," on its own line, then "Thanks for reaching out." on the next line. Acknowledge exactly what they are looking for including move-in date if provided. If there is a mismatch between their listed neighborhood and what they described in their message, acknowledge the correct neighborhood from their message and ask if they are also open to the other one. Otherwise ask one smart follow-up question about timing or must-haves. End with "Looking forward to working with you," on its own line, then "Leo Williams" on the next line. No em dashes. No filler. No casual language. Under 90 words total.
 
 Renter details:
 - Name: ${name}

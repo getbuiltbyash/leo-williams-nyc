@@ -361,7 +361,7 @@ export default function Home() {
               <div className="form-row">
                 <div className="ff"><label>City / Borough</label>
                   <select value={formData.city} onChange={e=>setFormData(f=>({...f,city:e.target.value}))}>
-                    <option value="">Flexible</option>
+                    <option value="" disabled>e.g. Manhattan, Brooklyn...</option>
                     <option>Manhattan</option>
                     <option>Brooklyn</option>
                     <option>Queens</option>
