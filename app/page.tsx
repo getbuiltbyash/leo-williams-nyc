@@ -366,10 +366,7 @@ export default function Home() {
                   </select>
                 </div>
                 <div className="ff"><label>Budget</label>
-                  <select value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))}>
-                    <option value="">Flexible</option>
-                    <option>Under $2,000</option><option>$2,000–$3,000</option><option>$3,000–$4,500</option><option>$4,500–$6,000</option><option>$6,000+</option>
-                  </select>
+                  <input type="text" placeholder="e.g. $3,000/mo or flexible" value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))} />
                 </div>
               </div>
               <div className="ff"><label>Message</label><textarea placeholder="Tell me what you're looking for..." value={formData.message} onChange={e=>setFormData(f=>({...f,message:e.target.value}))} /></div>

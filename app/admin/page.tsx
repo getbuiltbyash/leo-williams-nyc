@@ -491,24 +491,24 @@ export default function Admin(){
                           {inq.message&&<div style={{background:OFF,border:`1px solid ${R}`,padding:'10px 14px',fontSize:'13px',color:'#6B6B68',lineHeight:1.7,marginBottom:'1rem',fontFamily:F}}>{inq.message}</div>}
 
                           {/* AI COMPOSE */}
-                          <div style={{marginBottom:'1rem'}}>
-                            <div style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>AI Draft Response</div>
-                            <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
-                              <button onClick={()=>doCompose(inq.id,'email',inq)} disabled={compose[ek]?.load} style={{...PB,background:BL,fontSize:'11px'}}>{compose[ek]?.load?'Writing...':'✨ Draft Email'}</button>
-                              <button onClick={()=>doCompose(inq.id,'sms',inq)} disabled={compose[sk]?.load} style={{...PB,background:'#6B6B68',fontSize:'11px'}}>{compose[sk]?.load?'Writing...':'✨ Draft Text'}</button>
+                          <div style={{marginBottom:'1rem',background:'#EEF2F8',border:`1px solid rgba(27,58,107,0.15)`,padding:'1rem'}}>
+                            <div style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:BL,marginBottom:'10px',fontFamily:F}}>✨ AI Draft Response</div>
+                            <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+                              <button onClick={()=>doCompose(inq.id,'email',inq)} disabled={compose[ek]?.load} style={{...PB,background:BL,fontSize:'11px'}}>{compose[ek]?.load?'Writing email...':'Draft Email'}</button>
+                              <button onClick={()=>doCompose(inq.id,'sms',inq)} disabled={compose[sk]?.load} style={{...PB,background:'#555',fontSize:'11px'}}>{compose[sk]?.load?'Writing text...':'Draft Text'}</button>
                             </div>
                             {compose[ek]?.text&&(
-                              <div style={{marginBottom:'8px'}}>
-                                <div style={{fontSize:'10px',fontWeight:600,color:'#9B9B98',marginBottom:'4px',fontFamily:F}}>Email Draft</div>
-                                <textarea defaultValue={compose[ek].text} rows={5} style={{...I,fontSize:'12px',lineHeight:1.7}}/>
-                                <a href={`mailto:${inq.email}?body=${encodeURIComponent(compose[ek].text)}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block',fontSize:'11px',marginTop:'6px'}}>Open in Mail →</a>
+                              <div style={{marginBottom:'12px',background:'#fff',padding:'12px',border:`1px solid rgba(27,58,107,0.2)`}}>
+                                <div style={{fontSize:'10px',fontWeight:700,color:BL,marginBottom:'8px',fontFamily:F,letterSpacing:'0.1em',textTransform:'uppercase'}}>Email Draft</div>
+                                <textarea value={compose[ek].text} onChange={e=>setCompose(p=>({...p,[ek]:{...p[ek],text:e.target.value}}))} rows={5} style={{...I,fontSize:'13px',lineHeight:1.8,background:'#fff',marginBottom:'8px'}}/>
+                                <a href={`mailto:${inq.email}?body=${encodeURIComponent(compose[ek].text)}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block',fontSize:'11px'}}>Open in Mail →</a>
                               </div>
                             )}
                             {compose[sk]?.text&&(
-                              <div>
-                                <div style={{fontSize:'10px',fontWeight:600,color:'#9B9B98',marginBottom:'4px',fontFamily:F}}>Text Draft</div>
-                                <textarea defaultValue={compose[sk].text} rows={3} style={{...I,fontSize:'12px',lineHeight:1.7}}/>
-                                <a href={`sms:${inq.phone}?body=${encodeURIComponent(compose[sk].text)}`} style={{...PB,background:'#6B6B68',textDecoration:'none',display:'inline-block',fontSize:'11px',marginTop:'6px'}}>Open in Messages →</a>
+                              <div style={{background:'#fff',padding:'12px',border:`1px solid rgba(27,58,107,0.2)`}}>
+                                <div style={{fontSize:'10px',fontWeight:700,color:BL,marginBottom:'8px',fontFamily:F,letterSpacing:'0.1em',textTransform:'uppercase'}}>Text Draft</div>
+                                <textarea value={compose[sk].text} onChange={e=>setCompose(p=>({...p,[sk]:{...p[sk],text:e.target.value}}))} rows={3} style={{...I,fontSize:'13px',lineHeight:1.8,background:'#fff',marginBottom:'8px'}}/>
+                                <a href={`sms:${inq.phone}?body=${encodeURIComponent(compose[sk].text)}`} style={{...PB,background:'#555',textDecoration:'none',display:'inline-block',fontSize:'11px'}}>Open in Messages →</a>
                               </div>
                             )}
                           </div>
