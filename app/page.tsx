@@ -259,11 +259,11 @@ export default function Home() {
         {/* FILTER PANEL */}
         {showFilter && (
           <div style={{background:'var(--off)',border:'1px solid var(--rule)',padding:'1.5rem',marginBottom:'1.5rem'}}>
-            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',gap:'1.5rem',marginBottom:'1.25rem'}}>
+            <div className="filter-grid" style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',gap:'1.5rem',marginBottom:'1.25rem'}}>
               {/* NEIGHBORHOODS grouped by borough */}
-              <div>
+              <div style={{position:'relative'}}>
                 <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Neighborhood</div>
-                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'220px',overflowY:'auto'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'220px',overflowY:'auto',paddingRight:'4px',scrollbarWidth:'thin'}} className="hood-scroll">
                   {(()=>{
                     const hoods = Array.from(new Set(listings.map(l=>l.neighborhood))).sort()
                     const boroughs: Record<string,string[]> = {
@@ -284,6 +284,9 @@ export default function Home() {
                       </div>
                     ))
                   })()}
+                </div>
+                <div style={{position:'absolute',bottom:0,left:0,right:0,height:'40px',background:'linear-gradient(to bottom, transparent, var(--off))',pointerEvents:'none',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
+                  <span style={{fontSize:'0.6rem',color:'var(--ink4)',fontFamily:'var(--sans)',letterSpacing:'0.1em'}}>▼ scroll</span>
                 </div>
               </div>
               {/* BEDROOMS */}
@@ -315,13 +318,13 @@ export default function Home() {
                 <div style={{fontSize:'0.55rem',fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--ink4)',marginBottom:'0.75rem',fontFamily:'var(--sans)'}}>Price Range</div>
                 <div style={{marginBottom:'8px'}}>
                   <div style={{fontSize:'0.6rem',color:'var(--ink4)',marginBottom:'4px',fontFamily:'var(--sans)'}}>Min</div>
-                  <select value={searchMin} onChange={e=>setSearchMin(e.target.value)} style={{width:'100%',padding:'6px 8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.78rem',outline:'none'}}>
+                  <select value={searchMin} onChange={e=>setSearchMin(e.target.value)} style={{width:'100%',padding:'8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.82rem',outline:'none',color:'var(--ink)'}}>
                     <option>No min</option><option>$1,500/mo</option><option>$2,000/mo</option><option>$2,500/mo</option><option>$3,500/mo</option>
                   </select>
                 </div>
                 <div>
                   <div style={{fontSize:'0.6rem',color:'var(--ink4)',marginBottom:'4px',fontFamily:'var(--sans)'}}>Max</div>
-                  <select value={searchMax} onChange={e=>setSearchMax(e.target.value)} style={{width:'100%',padding:'6px 8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.78rem',outline:'none'}}>
+                  <select value={searchMax} onChange={e=>setSearchMax(e.target.value)} style={{width:'100%',padding:'8px',border:'1px solid var(--rule)',background:'var(--white)',fontFamily:'var(--sans)',fontSize:'0.82rem',outline:'none',color:'var(--ink)'}}>
                     <option>No max</option><option>$2,500/mo</option><option>$3,500/mo</option><option>$5,000/mo</option><option>$7,500+</option>
                   </select>
                 </div>

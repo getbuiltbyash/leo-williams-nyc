@@ -199,3 +199,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .nav-logo-name{white-space:nowrap!important}
   .nav-logo em{white-space:nowrap!important}
 }
+
+/* FILTER PANEL */
+.hood-scroll::-webkit-scrollbar{width:3px}
+.hood-scroll::-webkit-scrollbar-track{background:transparent}
+.hood-scroll::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px}
+@media(max-width:768px){
+  .filter-grid{grid-template-columns:1fr 1fr!important}
+}
