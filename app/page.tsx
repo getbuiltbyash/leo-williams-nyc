@@ -440,7 +440,7 @@ export default function Home() {
                   {(l.featured_amenities||[]).length>0&&(
                     <div style={{display:'flex',flexWrap:'wrap',gap:'4px',margin:'6px 0'}}>
                       {(l.featured_amenities||[]).slice(0,3).map(a=>(
-                        <span key={a} style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.06em',padding:'2px 7px',background:'#FFFBF2',border:'1px solid #B8975A',color:'#B8975A',fontFamily:'var(--sans)'}}>
+                        <span key={a} style={{fontSize:'9px',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',padding:'3px 8px',background:'#FFFBF2',border:'1px solid #B8975A',color:'#B8975A',fontFamily:'var(--sans)'}}>
                           {a}
                         </span>
                       ))}
