@@ -172,8 +172,14 @@ export default function Admin(){
     setCompose(p=>({...p,[key]:{type,text:'',load:true}}))
     try{
       const res=await fetch('/api/compose-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,inquiry:inq})})
-      const d=await res.json();setCompose(p=>({...p,[key]:{type,text:d.message||'',load:false}}))
-    }catch(e){setCompose(p=>({...p,[key]:{type,text:'Failed to generate.',load:false}}))}
+      if(!res.ok){setCompose(p=>({...p,[key]:{type,text:`Error: ${res.status} ${res.statusText}`,load:false}}));return}
+      const d=await res.json()
+      console.log('compose response:',d)
+      setCompose(p=>({...p,[key]:{type,text:d.message||'No message returned',load:false}}))
+    }catch(e){
+      console.error('compose error:',e)
+      setCompose(p=>({...p,[key]:{type,text:'Network error. Check console.',load:false}}))
+    }
   }
 
   async function saveListing(status:string){
