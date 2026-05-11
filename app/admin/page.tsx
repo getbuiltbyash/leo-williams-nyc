@@ -16,6 +16,7 @@ type Listing = {
   description: string
   amenities: string[]
   photos: string[]
+  private_photos: string[]
   status: string
   badge: string
 }
@@ -38,18 +39,18 @@ type Inquiry = {
 const EMPTY: Listing = {
   neighborhood:'',full_address:'',price:'',beds:'',baths:'',
   lease_length:'',concessions:'',op_paid:false,description:'',
-  amenities:[],photos:[],status:'draft',badge:''
+  amenities:[],photos:[],private_photos:[],status:'draft',badge:''
 }
 
 const AMENITIES = [
   'Basketball court','Bike storage','Central A/C','City views',
-  'Co-working space','Concierge','Doorman','Electronic doorman',
+  'Co-working space','Communal lounge','Concierge','Dishwasher','Doorman',
   'Elevator','Full gym','Great natural light','Hardwood floors',
   'Heat included','High-speed WiFi','Hot water included','In-unit laundry',
   'Laundry in building','Package room','Parking available','Pet friendly',
-  'Penthouse floor','Private elevator','Private outdoor space','Resident lounge',
-  'Renovated bathroom','Renovated kitchen','Rooftop access','Sauna',
-  'Storage unit','Theater room','Virtual doorman'
+  'Penthouse floor','Private balcony','Private elevator','Private terrace',
+  'Renovated bathroom','Renovated kitchen','Resident lounge','Rooftop access',
+  'Sauna','Storage unit','Theater room','Virtual doorman','Wine chiller'
 ].sort()
 
 const G='#B8975A',INK='#111110',R='#E2E0DA',OFF='#F8F7F4',PAPER='#F2F1ED',BL='#1B3A6B',DNG='#C0392B'
@@ -110,6 +111,7 @@ export default function Admin(){
   const [profSaved,setProfSaved]=useState(false)
   const [photoUp,setPhotoUp]=useState(false)
   const [listingPhotoUp,setListingPhotoUp]=useState(false)
+  const [photoOrder,setPhotoOrder]=useState<number[]>([])
   const [expandInq,setExpandInq]=useState<string|null>(null)
   const [inqNotes,setInqNotes]=useState<Record<string,string>>({})
   const [inqNotesList,setInqNotesList]=useState<Record<string,{id:string,text:string,created_at:string}[]>>({})
@@ -248,7 +250,14 @@ export default function Admin(){
 
   async function saveListing(status:string){
     setSaveStatus('saving')
-    const payload={...form,status}
+    // Apply photo order if set, otherwise keep current order
+    let orderedPhotos = [...form.photos]
+    if(photoOrder.length > 0){
+      const ordered = photoOrder.filter(i=>i<form.photos.length).map(i=>form.photos[i])
+      const unordered = form.photos.filter((_,i)=>!photoOrder.includes(i))
+      orderedPhotos = [...ordered, ...unordered]
+    }
+    const payload={...form,photos:orderedPhotos,op_paid:true,status}
     const{error}=editId?await getSupabase().from('listings').update(payload).eq('id',editId):await getSupabase().from('listings').insert([payload])
     if(error){setSaveStatus('error');return}
     setSaveStatus('saved');loadAll()
@@ -260,7 +269,7 @@ export default function Admin(){
     await getSupabase().from('listings').delete().eq('id',id);loadAll()
   }
 
-  function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[]});setEditId(l.id||null);nav('add')}
+  function editL(l:Listing){setForm({...l,amenities:Array.isArray(l.amenities)?l.amenities:[],private_photos:Array.isArray(l.private_photos)?l.private_photos:[]});setEditId(l.id||null);setPhotoOrder([]);nav('add')}
 
   async function updInqStatus(id:string,status:string){await getSupabase().from('inquiries').update({status}).eq('id',id);loadAll()}
   async function loadNotes(id:string, raw:string){
@@ -477,39 +486,75 @@ export default function Admin(){
                     <input value={form.badge} onChange={e=>setF('badge',e.target.value)} placeholder="New, Featured, Just Listed..." style={I}/>
                   </Field>
                 </div>
-                <div style={{marginTop:'1rem'}}>
-                  <label style={L}>Owner Paid / No Fee to Tenant</label>
-                  <div style={{display:'flex',gap:'0'}}>
-                    <button type="button" onClick={()=>setForm(p=>({...p,op_paid:true}))} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:form.op_paid?700:400,fontFamily:F,background:form.op_paid?INK:OFF,color:form.op_paid?'#fff':'#6B6B68',border:`1px solid ${R}`,cursor:'pointer'}}>Yes — No Fee</button>
-                    <button type="button" onClick={()=>setForm(p=>({...p,op_paid:false}))} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:!form.op_paid?700:400,fontFamily:F,background:!form.op_paid?INK:OFF,color:!form.op_paid?'#fff':'#6B6B68',border:`1px solid ${R}`,borderLeft:'none',cursor:'pointer'}}>No — Tenant Pays Fee</button>
-                  </div>
-                </div>
+  
               </Card>
 
               {/* PHOTOS */}
               <Card>
-                <CardTitle title="Photos — carousel on listing cards, no maximum"/>
+                <CardTitle title="Photos"/>
                 <label style={{display:'block',cursor:'pointer',border:`2px dashed ${R}`,padding:'2rem',textAlign:'center',background:OFF,marginBottom:'1rem'}}>
                   <input type="file" multiple accept="image/*" onChange={uploadListingPhotos} style={{display:'none'}}/>
                   <div style={{fontSize:'24px',marginBottom:'6px'}}>📷</div>
                   <div style={{fontSize:'13px',fontWeight:600,color:INK,fontFamily:F,marginBottom:'4px'}}>{listingPhotoUp?'Uploading...':'Tap to add photos'}</div>
-                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · As many as you like · Use "Set Cover" to choose your main photo</div>
+                  <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F}}>JPEG · PNG · HEIC · No maximum</div>
                 </label>
+
+                {/* PUBLIC PHOTOS */}
                 {form.photos.length>0&&(
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'8px'}}>
-                    {form.photos.map((photoUrl,photoIdx)=>(
-                      <div key={photoIdx} style={{position:'relative',aspectRatio:'3/2',overflow:'hidden',background:PAPER,outline:photoIdx===0?`2px solid ${G}`:'none'}}>
-                        <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                        {photoIdx===0
-                          ?<span style={{position:'absolute',top:'4px',left:'4px',background:G,color:'#fff',fontSize:'9px',fontWeight:700,padding:'2px 6px',fontFamily:F}}>COVER</span>
-                          :<button onClick={()=>setForm(p=>{const arr=[...p.photos];arr.splice(photoIdx,1);return{...p,photos:[photoUrl,...arr]};})} style={{position:'absolute',top:'4px',left:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F}}>Set Cover</button>
-                        }
-                        <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,pi)=>pi!==photoIdx)}))} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'22px',height:'22px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
-                      </div>
-                    ))}
+                  <div style={{marginBottom:'1.5rem'}}>
+                    <div style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>
+                      Public Photos — tap numbers to set order, tap again to remove from order
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:'8px'}}>
+                      {form.photos.map((photoUrl,photoIdx)=>{
+                        const orderPos=photoOrder.indexOf(photoIdx)
+                        const isCover=photoOrder[0]===photoIdx||(photoOrder.length===0&&photoIdx===0)
+                        return(
+                          <div key={photoIdx} style={{position:'relative',aspectRatio:'3/2',overflow:'hidden',background:PAPER,outline:isCover?`2px solid ${G}`:orderPos>=0?`2px solid ${BL}`:'none'}}>
+                            <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                            {/* Order badge */}
+                            <button onClick={()=>{
+                              setPhotoOrder(prev=>{
+                                if(prev.includes(photoIdx)) return prev.filter(i=>i!==photoIdx)
+                                return [...prev,photoIdx]
+                              })
+                            }} style={{position:'absolute',top:'4px',left:'4px',background:isCover?G:orderPos>=0?BL:'rgba(0,0,0,0.55)',color:'#fff',border:'none',fontSize:'9px',fontWeight:700,padding:'2px 6px',cursor:'pointer',fontFamily:F,minWidth:'20px'}}>
+                              {isCover?'COVER':orderPos>=0?orderPos+1:'#'}
+                            </button>
+                            {/* Make cover */}
+                            {!isCover&&<button onClick={()=>setPhotoOrder(prev=>[photoIdx,...prev.filter(i=>i!==photoIdx)])} style={{position:'absolute',bottom:'4px',left:'4px',background:'rgba(0,0,0,0.55)',color:G,border:`1px solid ${G}`,fontSize:'8px',fontWeight:700,padding:'2px 5px',cursor:'pointer',fontFamily:F}}>Cover</button>}
+                            {/* Move to private */}
+                            <button onClick={()=>setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx),private_photos:[...p.private_photos,photoUrl]}))} style={{position:'absolute',bottom:'4px',right:'4px',background:'rgba(0,0,0,0.55)',color:'#fff',border:'none',fontSize:'8px',padding:'2px 5px',cursor:'pointer',fontFamily:F}}>🔒</button>
+                            {/* Delete */}
+                            <button onClick={()=>{setForm(p=>({...p,photos:p.photos.filter((_,i)=>i!==photoIdx)}));setPhotoOrder(prev=>prev.filter(i=>i!==photoIdx).map(i=>i>photoIdx?i-1:i))}} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'20px',height:'20px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',lineHeight:'20px',textAlign:'center'}}>×</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'6px'}}>{form.photos.length} public photo{form.photos.length!==1?'s':''} · 🔒 moves to private · × deletes</div>
                   </div>
                 )}
-                {form.photos.length>0&&<div style={{fontSize:'11px',color:'#9B9B98',fontFamily:F,marginTop:'8px'}}>{form.photos.length} photo{form.photos.length!==1?'s':''} · Click "Set Cover" to choose which photo appears first</div>}
+
+                {/* PRIVATE PHOTOS */}
+                {(form.private_photos||[]).length>0&&(
+                  <div>
+                    <div style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'#9B9B98',marginBottom:'8px',fontFamily:F}}>
+                      Private Photos — visible in admin only
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:'8px'}}>
+                      {(form.private_photos||[]).map((photoUrl,photoIdx)=>(
+                        <div key={photoIdx} style={{position:'relative',aspectRatio:'3/2',overflow:'hidden',background:PAPER,border:`1px dashed ${R}`}}>
+                          <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover',display:'block',opacity:0.7}}/>
+                          <span style={{position:'absolute',top:'4px',left:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',fontSize:'9px',padding:'2px 5px',fontFamily:F}}>🔒</span>
+                          {/* Move to public */}
+                          <button onClick={()=>setForm(p=>({...p,private_photos:p.private_photos.filter((_,i)=>i!==photoIdx),photos:[...p.photos,photoUrl]}))} style={{position:'absolute',bottom:'4px',left:'4px',background:'rgba(0,0,0,0.55)',color:'#fff',border:'none',fontSize:'8px',padding:'2px 5px',cursor:'pointer',fontFamily:F}}>Make Public</button>
+                          {/* Delete */}
+                          <button onClick={()=>setForm(p=>({...p,private_photos:p.private_photos.filter((_,i)=>i!==photoIdx)}))} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',width:'20px',height:'20px',borderRadius:'50%',cursor:'pointer',fontSize:'12px',lineHeight:'20px',textAlign:'center'}}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Card>
 
               {/* AMENITIES */}

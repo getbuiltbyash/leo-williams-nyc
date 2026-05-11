@@ -174,6 +174,11 @@ export default function Home() {
     setFormLoading(true)
     const neighborhoodStr = [formData.city, formData.neighborhood].filter(Boolean).join(' - ')
     const { error } = await getSupabase().from('inquiries').insert([{ ...formData, neighborhood: neighborhoodStr, status: 'new', source: 'website' }])
+    // Notify Leo via SMS
+    if (!error && profile.phone) {
+      const smsBody = `New inquiry from ${formData.first_name} ${formData.last_name} (${formData.inquiry_type}) — ${neighborhoodStr || 'flexible'}, ${formData.budget || 'budget TBD'}. leowilliamsnyc.com/admin`
+      fetch('/api/notify-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: profile.phone, message: smsBody }) }).catch(console.error)
+    }
     setFormLoading(false)
     if (!error) setFormSent(true)
   }
