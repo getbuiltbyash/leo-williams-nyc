@@ -198,24 +198,6 @@ export default function Admin(){
     }
   }
 
-  async function convertToJpeg(file:File):Promise<Blob>{
-    return new Promise((resolve,reject)=>{
-      const img=new Image()
-      const url=URL.createObjectURL(file)
-      img.onload=()=>{
-        const canvas=document.createElement('canvas')
-        canvas.width=img.width;canvas.height=img.height
-        canvas.getContext('2d')!.drawImage(img,0,0)
-        canvas.toBlob(blob=>{
-          URL.revokeObjectURL(url)
-          blob?resolve(blob):reject(new Error('conversion failed'))
-        },'image/jpeg',0.9)
-      }
-      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('load failed'))}
-      img.src=url
-    })
-  }
-
   async function uploadListingPhotos(e:React.ChangeEvent<HTMLInputElement>){
     const files=e.target.files;if(!files||files.length===0)return
     setListingPhotoUp(true)
@@ -223,11 +205,20 @@ export default function Admin(){
     for(let i=0;i<files.length;i++){
       const file=files[i]
       try{
-        const blob=await convertToJpeg(file)
+        // Convert ALL images server-side via Sharp (handles HEIC, JPEG, PNG, WEBP)
+        const fd=new FormData();fd.append('file',file)
+        const convRes=await fetch('/api/convert-image',{method:'POST',body:fd})
+        if(!convRes.ok) throw new Error('conversion failed')
+        const jpeg=await convRes.blob()
         const path=`listings/${Date.now()}-${i}.jpg`
-        const{error}=await getSupabase().storage.from('listing-photos').upload(path,blob,{upsert:true,contentType:'image/jpeg'})
-        if(!error){const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path);uploaded.push(data.publicUrl)}
-      }catch(err){console.error('upload error:',err)}
+        const{error}=await getSupabase().storage.from('listing-photos').upload(path,jpeg,{upsert:true,contentType:'image/jpeg'})
+        if(!error){
+          const{data}=getSupabase().storage.from('listing-photos').getPublicUrl(path)
+          uploaded.push(data.publicUrl)
+        } else {
+          console.error('upload error:',error)
+        }
+      }catch(err){console.error('photo error:',err)}
     }
     setForm(p=>({...p,photos:[...p.photos,...uploaded]}))
     setListingPhotoUp(false)

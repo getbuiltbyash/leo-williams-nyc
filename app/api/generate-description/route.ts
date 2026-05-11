@@ -7,10 +7,13 @@ export async function POST(req: NextRequest) {
 
 Rules:
 - Never mention broker fees, no-fee, or OP paid
-- Never use em dashes (--) or hyphens to connect clauses
-- No cliches like "don't miss out" or "won't last long"
+- Never mention the rent, price, or lease length
+- Never use first person ("I", "we", "I'm confident", "I believe")
+- Never make value judgments or claims about what the agent thinks
+- Never use em dashes or hyphens to connect clauses
+- No cliches like "don't miss out", "won't last long", "rare find"
 - No filler phrases
-- 3 to 4 direct, honest sentences
+- 3 to 4 direct, honest sentences about the apartment and neighborhood
 - Write in second person (you, your)
 
 Listing details:
