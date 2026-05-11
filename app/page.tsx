@@ -393,15 +393,15 @@ export default function Home() {
                     style={{cursor:'pointer',width:'100%',height:'100%',objectFit:'cover',display:'block'}}
                   />
                   {/* Prev arrow */}
-                  {(l.photos?.length||0) > 1 && (cardPhotoIdx[l.id!]||0) > 0 && (
-                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:(p[l.id!]||0)-1}))}}
+                  {(l.photos?.length||0) > 1 && (
+                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:(p[l.id!]||0)===0?(l.photos?.length||1)-1:(p[l.id!]||0)-1}))}}
                       style={{position:'absolute',left:'8px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.45)',color:'#fff',border:'none',width:'28px',height:'28px',borderRadius:'50%',cursor:'pointer',fontSize:'14px',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>
                       ‹
                     </button>
                   )}
                   {/* Next arrow */}
-                  {(l.photos?.length||0) > 1 && (cardPhotoIdx[l.id!]||0) < (l.photos?.length||0)-1 && (
-                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:(p[l.id!]||0)+1}))}}
+                  {(l.photos?.length||0) > 1 && (
+                    <button onClick={e=>{e.stopPropagation();setCardPhotoIdx(p=>({...p,[l.id!]:((p[l.id!]||0)+1)%(l.photos?.length||1)}))}}
                       style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.45)',color:'#fff',border:'none',width:'28px',height:'28px',borderRadius:'50%',cursor:'pointer',fontSize:'14px',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>
                       ›
                     </button>
@@ -606,8 +606,8 @@ export default function Home() {
                 ))}
               </div>
               {photos.length > 1 && <>
-                <button className="cbtn cprev" onClick={()=>setCarouselIdx(i=>Math.max(0,i-1))}>‹</button>
-                <button className="cbtn cnext" onClick={()=>setCarouselIdx(i=>Math.min(photos.length-1,i+1))}>›</button>
+                <button className="cbtn cprev" onClick={()=>setCarouselIdx(i=>i===0?(modal.photos?.length||1)-1:i-1)}>‹</button>
+                <button className="cbtn cnext" onClick={()=>setCarouselIdx(i=>i===photos.length-1?0:i+1)}>›</button>
                 <div className="cdots">
                   {photos.map((_,i)=><button key={i} className={`cdot${carouselIdx===i?' active':''}`} onClick={()=>setCarouselIdx(i)} />)}
                 </div>
