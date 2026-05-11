@@ -9,24 +9,26 @@ export async function POST(req: NextRequest) {
     const budget = inquiry.budget || 'not specified'
     const moveIn = inquiry.move_in || 'flexible'
     const message = inquiry.message || 'none provided'
+    const propertyType = inquiry.property_type || 'not specified'
 
     let prompt = ''
 
     if (type === 'email' && isLandlord) {
-      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a professional email to a landlord named ${firstName}.
+      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a professional email to a landlord or property owner named ${firstName} who has a ${propertyType} available in ${neighborhood}.
 
 Open with: Hi ${firstName},
 Then: Thanks for reaching out.
-Body: Reference their neighborhood (${neighborhood}) and message. Ask one follow-up question about unit size, availability, or asking rent.
+Body: Acknowledge their property. Express genuine interest in seeing it. Ask one specific question — propose scheduling a walkthrough or ask about the best time to visit the unit. Sound like an agent who moves fast and takes listings seriously.
 Close with: Looking forward to connecting,
 Leo Williams
 
 No em dashes. No filler. Under 80 words. Write ONLY the email body.
 
-Their message: ${message}`
+Their message: ${message}
+Available from: ${moveIn}`
 
     } else if (type === 'email' && !isLandlord) {
-      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a professional email to a renter named ${firstName}.
+      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a professional email to a prospective renter named ${firstName}.
 
 Open with: Hi ${firstName},
 Then: Thanks for reaching out.
@@ -39,10 +41,10 @@ No em dashes. No filler. No casual language. Under 90 words. Write ONLY the emai
 Details — Neighborhood: ${neighborhood}, Budget: ${budget}, Move-in: ${moveIn}, Message: ${message}`
 
     } else if (type === 'sms' && isLandlord) {
-      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a brief SMS to a landlord named ${firstName}.
+      prompt = `You are Leo Williams, licensed real estate salesperson at DiGiulio Group NYC. Write a brief SMS to a landlord named ${firstName} who has a ${propertyType} in ${neighborhood}.
 
 Start with exactly: Hey ${firstName}, it's Leo Williams. I saw your inquiry come in through my site, leowilliamsnyc.com.
-Then: Reference their property in ${neighborhood} and ask one specific question.
+Then: Express interest in the property and ask about scheduling a time to see it or discuss it further. Sound like an agent who moves fast.
 No emojis. No em dashes. Under 40 words total. Write ONLY the SMS.
 
 Their message: ${message}`

@@ -42,7 +42,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<Listing | null>(null)
   const [carouselIdx, setCarouselIdx] = useState(0)
-  const [formData, setFormData] = useState({ first_name:'', last_name:'', email:'', phone:'', city:'', neighborhood:'', budget:'', move_in:'', message:'', inquiry_type:'renter' })
+  const [formData, setFormData] = useState({ first_name:'', last_name:'', email:'', phone:'', city:'', neighborhood:'', budget:'', move_in:'', beds:'', baths:'', property_type:'', message:'', inquiry_type:'renter' })
   const [formSent, setFormSent] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [searchHood, setSearchHood] = useState('Any')
@@ -177,7 +177,17 @@ export default function Home() {
     const { error } = await getSupabase().from('inquiries').insert([{ ...formData, neighborhood: neighborhoodStr, status: 'new', source: 'website' }])
     // Notify Leo via SMS
     if (!error && profile.phone) {
-      const smsBody = `New inquiry from ${formData.first_name} ${formData.last_name} (${formData.inquiry_type}) — ${neighborhoodStr || 'flexible'}, ${formData.budget || 'budget TBD'}. leowilliamsnyc.com/admin`
+      const smsBody = [
+        `New inquiry from ${formData.first_name} ${formData.last_name} (${formData.inquiry_type}).`,
+        formData.city ? `City: ${formData.city}` : null,
+        formData.neighborhood ? `Neighborhood: ${formData.neighborhood}` : null,
+        formData.budget ? `Budget: ${formData.budget}` : null,
+        (formData.inquiry_type === 'renter' || formData.inquiry_type === 'buyer') && formData.beds ? `Beds: ${formData.beds}` : null,
+        formData.inquiry_type === 'renter' && formData.baths ? `Baths: ${formData.baths}` : null,
+        (formData.inquiry_type === 'buyer' || formData.inquiry_type === 'landlord') && formData.property_type ? `Property: ${formData.property_type}` : null,
+        formData.move_in ? `${formData.inquiry_type === 'landlord' ? 'Available' : formData.inquiry_type === 'buyer' ? 'Timeline' : 'Move-in'}: ${formData.move_in}` : null,
+        `leowilliamsnyc.com/admin`
+      ].filter(Boolean).join(' | ')
       fetch('/api/notify-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: profile.phone, message: smsBody }) }).catch(console.error)
     }
     setFormLoading(false)
@@ -543,8 +553,8 @@ export default function Home() {
             <form onSubmit={submitForm}>
               <div className="form-section-label">Your Inquiry</div>
               <div style={{display:'flex',gap:'0',marginBottom:'1.25rem'}}>
-                <button type="button" className={`type-btn ${formData.inquiry_type==='renter'?'active':'inactive'}`} onClick={()=>setFormData(f=>({...f,inquiry_type:'renter'}))}>I am a Renter</button>
-                <button type="button" className={`type-btn ${formData.inquiry_type==='landlord'?'active':'inactive'}`} onClick={()=>setFormData(f=>({...f,inquiry_type:'landlord'}))}>I am a Landlord</button>
+                <button type="button" className={`type-btn ${formData.inquiry_type==='renter'?'active':'inactive'}`} onClick={()=>setFormData(f=>({...f,inquiry_type:'renter'}))}>Renter / Buyer</button>
+                <button type="button" className={`type-btn ${formData.inquiry_type==='landlord'?'active':'inactive'}`} onClick={()=>setFormData(f=>({...f,inquiry_type:'landlord'}))}>Landlord / Property Owner</button>
               </div>
               <div className="form-row">
                 <div className="ff"><label>First Name</label><input required placeholder="Jane" value={formData.first_name} onChange={e=>setFormData(f=>({...f,first_name:e.target.value}))} /></div>
@@ -555,15 +565,8 @@ export default function Home() {
                 <div className="ff"><label>Phone</label><input placeholder="(212) 555-0100" value={formData.phone} onChange={e=>setFormData(f=>({...f,phone:e.target.value}))} /></div>
               </div>
               <div className="form-row">
-                <div className="ff"><label>City / Borough</label>
-                  <select value={formData.city} onChange={e=>setFormData(f=>({...f,city:e.target.value}))}>
-                    <option value="" disabled>e.g. Manhattan, Brooklyn...</option>
-                    <option>Manhattan</option>
-                    <option>Brooklyn</option>
-                    <option>Queens</option>
-                    <option>The Bronx</option>
-                    <option>Staten Island</option>
-                  </select>
+                <div className="ff"><label>City</label>
+                  <input type="text" placeholder="e.g. Manhattan, Brooklyn, Queens..." value={formData.city} onChange={e=>setFormData(f=>({...f,city:e.target.value}))} />
                 </div>
                 <div className="ff"><label>Budget</label>
                   <input type="text" placeholder="e.g. $3,000/mo or flexible" value={formData.budget} onChange={e=>setFormData(f=>({...f,budget:e.target.value}))} />
@@ -572,9 +575,93 @@ export default function Home() {
               <div className="ff"><label>Specific Neighborhoods (optional)</label>
                 <input type="text" placeholder="e.g. Williamsburg, Upper West Side, Nolita..." value={formData.neighborhood} onChange={e=>setFormData(f=>({...f,neighborhood:e.target.value}))} />
               </div>
-              <div className="ff"><label>Move-in Date</label>
-                <input type="text" placeholder="e.g. June 1, ASAP, flexible..." value={formData.move_in} onChange={e=>setFormData(f=>({...f,move_in:e.target.value}))} />
-              </div>
+
+              {/* RENTER FIELDS */}
+              {formData.inquiry_type === 'renter' && (
+                <>
+                  <div className="form-row">
+                    <div className="ff"><label>Bedrooms</label>
+                      <select value={formData.beds} onChange={e=>setFormData(f=>({...f,beds:e.target.value}))}>
+                        <option value="">Any</option>
+                        <option>Studio</option>
+                        <option>1 Bed</option>
+                        <option>2 Bed</option>
+                        <option>3 Bed</option>
+                        <option>3+ Bed</option>
+                      </select>
+                    </div>
+                    <div className="ff"><label>Bathrooms</label>
+                      <select value={formData.baths} onChange={e=>setFormData(f=>({...f,baths:e.target.value}))}>
+                        <option value="">Any</option>
+                        <option>1 Bath</option>
+                        <option>1.5 Bath</option>
+                        <option>2 Bath</option>
+                        <option>2+ Bath</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="ff"><label>Move-in Date</label>
+                    <input type="text" placeholder="e.g. June 1, ASAP, flexible..." value={formData.move_in} onChange={e=>setFormData(f=>({...f,move_in:e.target.value}))} />
+                  </div>
+                </>
+              )}
+
+              {/* BUYER FIELDS */}
+              {formData.inquiry_type === 'buyer' && (
+                <>
+                  <div className="form-row">
+                    <div className="ff"><label>Property Type</label>
+                      <select value={formData.property_type} onChange={e=>setFormData(f=>({...f,property_type:e.target.value}))}>
+                        <option value="">Select type</option>
+                        <option>Studio / 1BR Condo</option>
+                        <option>2BR Condo</option>
+                        <option>3BR+ Condo</option>
+                        <option>Co-op</option>
+                        <option>Townhouse</option>
+                        <option>Multi-family</option>
+                        <option>Open to options</option>
+                      </select>
+                    </div>
+                    <div className="ff"><label>Bedrooms</label>
+                      <select value={formData.beds} onChange={e=>setFormData(f=>({...f,beds:e.target.value}))}>
+                        <option value="">Any</option>
+                        <option>Studio</option>
+                        <option>1 Bed</option>
+                        <option>2 Bed</option>
+                        <option>3 Bed</option>
+                        <option>3+ Bed</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="ff"><label>Target Timeline</label>
+                    <input type="text" placeholder="e.g. Within 6 months, actively looking, just exploring..." value={formData.move_in} onChange={e=>setFormData(f=>({...f,move_in:e.target.value}))} />
+                  </div>
+                </>
+              )}
+
+              {/* LANDLORD FIELDS */}
+              {formData.inquiry_type === 'landlord' && (
+                <>
+                  <div className="form-row">
+                    <div className="ff"><label>Property Type</label>
+                      <select value={formData.property_type} onChange={e=>setFormData(f=>({...f,property_type:e.target.value}))}>
+                        <option value="">Select type</option>
+                        <option>Studio</option>
+                        <option>1 Bedroom</option>
+                        <option>2 Bedroom</option>
+                        <option>3 Bedroom</option>
+                        <option>3+ Bedrooms</option>
+                        <option>Multi-unit building</option>
+                        <option>Entire building</option>
+                        <option>Commercial</option>
+                      </select>
+                    </div>
+                    <div className="ff"><label>Available From</label>
+                      <input type="text" placeholder="e.g. June 1, immediately, TBD..." value={formData.move_in} onChange={e=>setFormData(f=>({...f,move_in:e.target.value}))} />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="ff"><label>Message</label><textarea placeholder="Tell me what you're looking for..." value={formData.message} onChange={e=>setFormData(f=>({...f,message:e.target.value}))} /></div>
               <button type="submit" className="form-submit" disabled={formLoading}>{formLoading ? 'Sending...' : 'Send Message'}</button>
             </form>

@@ -706,14 +706,14 @@ export default function Admin(){
                             {compose[ek]?.text&&(
                               <div style={{marginBottom:'12px',background:'#fff',padding:'12px',border:`1px solid rgba(27,58,107,0.2)`}}>
                                 <div style={{fontSize:'10px',fontWeight:700,color:BL,marginBottom:'8px',fontFamily:F,letterSpacing:'0.1em',textTransform:'uppercase'}}>Email Draft</div>
-                                <textarea value={compose[ek].text} onChange={e=>setCompose(p=>({...p,[ek]:{...p[ek],text:e.target.value}}))} rows={5} style={{...I,fontSize:'13px',lineHeight:1.8,background:'#fff',marginBottom:'8px'}}/>
+                                <textarea value={compose[ek].text} onChange={e=>setCompose(p=>({...p,[ek]:{...p[ek],text:e.target.value}}))} rows={5} style={{...I,fontSize:'13px',lineHeight:1.8,background:OFF,marginBottom:'8px'}}/>
                                 <a href={`mailto:${inq.email}?body=${encodeURIComponent(compose[ek].text)}`} style={{...PB,background:BL,textDecoration:'none',display:'inline-block',fontSize:'11px'}}>Open in Mail →</a>
                               </div>
                             )}
                             {compose[sk]?.text&&(
                               <div style={{background:'#fff',padding:'12px',border:`1px solid rgba(27,58,107,0.2)`}}>
                                 <div style={{fontSize:'10px',fontWeight:700,color:BL,marginBottom:'8px',fontFamily:F,letterSpacing:'0.1em',textTransform:'uppercase'}}>Text Draft</div>
-                                <textarea value={compose[sk].text} onChange={e=>setCompose(p=>({...p,[sk]:{...p[sk],text:e.target.value}}))} rows={3} style={{...I,fontSize:'13px',lineHeight:1.8,background:'#fff',marginBottom:'8px'}}/>
+                                <textarea value={compose[sk].text} onChange={e=>setCompose(p=>({...p,[sk]:{...p[sk],text:e.target.value}}))} rows={3} style={{...I,fontSize:'13px',lineHeight:1.8,background:OFF,marginBottom:'8px'}}/>
                                 <a href={`sms:${inq.phone}?body=${encodeURIComponent(compose[sk].text)}`} style={{...PB,background:'#555',textDecoration:'none',display:'inline-block',fontSize:'11px'}}>Open in Messages →</a>
                               </div>
                             )}
