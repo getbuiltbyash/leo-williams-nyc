@@ -123,6 +123,8 @@ export default function Admin(){
   const [customAm,setCustomAm]=useState('')
   const [compose,setCompose]=useState<Record<string,{type:string,text:string,load:boolean}>>({})
   const photoRef=useRef<HTMLInputElement>(null)
+  const phoneRef=useRef<HTMLInputElement>(null)
+  const emailRef=useRef<HTMLInputElement>(null)
 
   useEffect(()=>{getSupabase().auth.getSession().then(({data})=>{if(data.session){setAuthed(true);loadAll()}})},[])
 
@@ -303,9 +305,10 @@ export default function Admin(){
   }
 
   async function saveProf(){
+    const phone=phoneRef.current?.value||pPhone
+    const email=emailRef.current?.value||pEmail
     const{data:ex}=await getSupabase().from('profile').select('id').limit(1).single()
-    const payload={bio_text:bio,phone:pPhone,email:pEmail,photo_url:photoUrl}
-    console.log('saving profile:',payload,'existing:',ex)
+    const payload={bio_text:bio,phone,email,photo_url:photoUrl}
     let error
     if(ex){
       ({error}=await getSupabase().from('profile').update(payload).eq('id',ex.id))
@@ -313,6 +316,7 @@ export default function Admin(){
       ({error}=await getSupabase().from('profile').insert([payload]))
     }
     if(error){console.error('profile save error:',error);alert('Save failed: '+error.message);return}
+    setPPhone(phone);setPEmail(email)
     setProfSaved(true);setTimeout(()=>setProfSaved(false),2000)
   }
 
@@ -711,8 +715,12 @@ export default function Admin(){
                 </Card>
                 <Card>
                   <CardTitle title="Contact Details"/>
-                  <div style={{marginBottom:'12px'}}><label style={L}>Phone</label><input value={pPhone} onChange={e=>setPPhone(e.target.value)} placeholder="(212) 555-0100" style={I}/></div>
-                  <div style={{marginBottom:'16px'}}><label style={L}>Email</label><input value={pEmail} onChange={e=>setPEmail(e.target.value)} placeholder="leo@leowilliamsnyc.com" style={I}/></div>
+                  <div style={{marginBottom:'12px'}}><label style={L}>Phone</label>
+                    <input ref={phoneRef} type="tel" defaultValue={pPhone} placeholder="(212) 555-0100" style={{...I,background:'#fff'}}/>
+                  </div>
+                  <div style={{marginBottom:'16px'}}><label style={L}>Email</label>
+                    <input ref={emailRef} type="email" defaultValue={pEmail} placeholder="leo@leowilliamsnyc.com" style={{...I,background:'#fff'}}/>
+                  </div>
                   <button onClick={saveProf} style={PB}>{profSaved?'✓ Saved!':'Save Profile'}</button>
                 </Card>
               </div>
