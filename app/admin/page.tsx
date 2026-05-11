@@ -477,9 +477,12 @@ export default function Admin(){
                     <input value={form.badge} onChange={e=>setF('badge',e.target.value)} placeholder="New, Featured, Just Listed..." style={I}/>
                   </Field>
                 </div>
-                <div style={{marginTop:'1rem',display:'flex',alignItems:'center',gap:'8px'}}>
-                  <input type="checkbox" id="op_paid" checked={form.op_paid} onChange={e=>setForm(p=>({...p,op_paid:e.target.checked}))} style={{width:'16px',height:'16px',cursor:'pointer'}}/>
-                  <label htmlFor="op_paid" style={{fontSize:'13px',color:INK,cursor:'pointer',fontFamily:F}}>Owner Paid — No Fee to tenant (shows "No Fee" badge on site)</label>
+                <div style={{marginTop:'1rem'}}>
+                  <label style={L}>Owner Paid / No Fee to Tenant</label>
+                  <div style={{display:'flex',gap:'0'}}>
+                    <button type="button" onClick={()=>setForm(p=>({...p,op_paid:true}))} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:form.op_paid?700:400,fontFamily:F,background:form.op_paid?INK:OFF,color:form.op_paid?'#fff':'#6B6B68',border:`1px solid ${R}`,cursor:'pointer'}}>Yes — No Fee</button>
+                    <button type="button" onClick={()=>setForm(p=>({...p,op_paid:false}))} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:!form.op_paid?700:400,fontFamily:F,background:!form.op_paid?INK:OFF,color:!form.op_paid?'#fff':'#6B6B68',border:`1px solid ${R}`,borderLeft:'none',cursor:'pointer'}}>No — Tenant Pays Fee</button>
+                  </div>
                 </div>
               </Card>
 
@@ -577,6 +580,8 @@ export default function Admin(){
                     <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
                       <span style={{fontSize:'10px',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 8px',fontFamily:F,background:l.status==='live'?'#E8F5EE':l.status==='draft'?PAPER:'#F3EEFF',color:l.status==='live'?'#1A6B3A':l.status==='draft'?'#6B6B68':'#7B5EA7'}}>{l.status}</span>
                       <button onClick={()=>editL(l)} style={{fontSize:'12px',fontWeight:500,color:BL,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Edit</button>
+                      {l.status!=='rented'&&<button onClick={async()=>{await getSupabase().from('listings').update({status:'rented'}).eq('id',l.id!);loadAll()}} style={{fontSize:'12px',fontWeight:500,color:'#7B5EA7',background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Mark Rented</button>}
+                      {l.status==='rented'&&<button onClick={async()=>{await getSupabase().from('listings').update({status:'live'}).eq('id',l.id!);loadAll()}} style={{fontSize:'12px',fontWeight:500,color:'#1A6B3A',background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Mark Live</button>}
                       <button onClick={()=>delListing(l.id!)} style={{fontSize:'12px',fontWeight:500,color:DNG,background:'none',border:'none',cursor:'pointer',fontFamily:F}}>Delete</button>
                     </div>
                   </div>
