@@ -325,11 +325,11 @@ export default function Home() {
           <div className="cways">
             <div className="cway">
               <div className="cway-icon">📞</div>
-              <span>{profile.phone ? <a href={`tel:${profile.phone}`}>{profile.phone}</a> : 'Update in admin'}</span>
+              <span>{profile.phone && profile.phone.trim() ? <a href={`tel:${profile.phone}`}>{profile.phone}</a> : 'Update in admin'}</span>
             </div>
             <div className="cway">
               <div className="cway-icon">✉</div>
-              <span>{profile.email ? <a href={`mailto:${profile.email}`}>{profile.email}</a> : 'Update in admin'}</span>
+              <span>{profile.email && profile.email.trim() ? <a href={`mailto:${profile.email}`}>{profile.email}</a> : 'Update in admin'}</span>
             </div>
             <div className="cway">
               <div className="cway-icon">🏢</div>

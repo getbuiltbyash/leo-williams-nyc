@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import sharp from 'sharp'
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,11 +7,16 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
     const arrayBuffer = await file.arrayBuffer()
-    const inputBuffer = Buffer.from(arrayBuffer)
-    const jpeg = await sharp(inputBuffer).rotate().jpeg({ quality: 92 }).toBuffer()
-    const uint8 = new Uint8Array(jpeg)
+    const inputBuffer = new Uint8Array(arrayBuffer)
 
-    return new NextResponse(uint8, {
+    const heicConvert = require('heic-convert')
+    const jpegBuffer = await heicConvert({
+      buffer: inputBuffer,
+      format: 'JPEG',
+      quality: 0.92
+    })
+
+    return new NextResponse(jpegBuffer, {
       headers: { 'Content-Type': 'image/jpeg' }
     })
   } catch (e) {

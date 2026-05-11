@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import type heic2anyType from 'heic2any'
 import { getSupabase } from '@/lib/supabase'
 import { normalizePrice, normalizeBeds, normalizeBaths, normalizeLease, normalizeConcessions } from '@/lib/normalize'
 
@@ -204,11 +203,13 @@ export default function Admin(){
   async function toJpegBlob(file:File):Promise<Blob>{
     const isHeic=file.type==='image/heic'||file.type==='image/heif'||file.name.toLowerCase().endsWith('.heic')||file.name.toLowerCase().endsWith('.heif')
     if(isHeic){
-      const h2a=await import('heic2any')
-      const converted=await (h2a.default as typeof heic2anyType)({blob:file,toType:'image/jpeg',quality:0.92})
-      return Array.isArray(converted)?converted[0]:converted
+      // Send to server for conversion
+      const fd=new FormData();fd.append('file',file)
+      const res=await fetch('/api/convert-image',{method:'POST',body:fd})
+      if(!res.ok)throw new Error('server conversion failed')
+      return await res.blob()
     }
-    // Canvas conversion for other formats
+    // Canvas conversion for JPG/PNG/WEBP
     return new Promise((res,rej)=>{
       const img=new Image(),url=URL.createObjectURL(file)
       img.onload=()=>{
@@ -304,9 +305,9 @@ export default function Admin(){
     setBioGen(false)
   }
 
-  async function saveProf(){
-    const phone=phoneRef.current?.value||pPhone
-    const email=emailRef.current?.value||pEmail
+  async function saveProf(phoneVal?:string,emailVal?:string){
+    const phone=phoneVal??pPhone
+    const email=emailVal??pEmail
     const{data:ex}=await getSupabase().from('profile').select('id').limit(1).single()
     const payload={bio_text:bio,phone,email,photo_url:photoUrl}
     let error
@@ -316,7 +317,6 @@ export default function Admin(){
       ({error}=await getSupabase().from('profile').insert([payload]))
     }
     if(error){console.error('profile save error:',error);alert('Save failed: '+error.message);return}
-    setPPhone(phone);setPEmail(email)
     setProfSaved(true);setTimeout(()=>setProfSaved(false),2000)
   }
 
@@ -716,12 +716,12 @@ export default function Admin(){
                 <Card>
                   <CardTitle title="Contact Details"/>
                   <div style={{marginBottom:'12px'}}><label style={L}>Phone</label>
-                    <input ref={phoneRef} type="tel" defaultValue={pPhone} placeholder="(212) 555-0100" style={{...I,background:'#fff'}}/>
+                    <input type="tel" value={pPhone} onChange={e=>setPPhone(e.target.value)} placeholder="(212) 555-0100" style={{...I,background:'#fff'}}/>
                   </div>
                   <div style={{marginBottom:'16px'}}><label style={L}>Email</label>
-                    <input ref={emailRef} type="email" defaultValue={pEmail} placeholder="leo@leowilliamsnyc.com" style={{...I,background:'#fff'}}/>
+                    <input type="email" value={pEmail} onChange={e=>setPEmail(e.target.value)} placeholder="leo@leowilliamsnyc.com" style={{...I,background:'#fff'}}/>
                   </div>
-                  <button onClick={saveProf} style={PB}>{profSaved?'✓ Saved!':'Save Profile'}</button>
+                  <button onClick={()=>saveProf(pPhone,pEmail)} style={PB}>{profSaved?'✓ Saved!':'Save Profile'}</button>
                 </Card>
               </div>
               <Card>
@@ -739,7 +739,7 @@ export default function Admin(){
                 <button onClick={genBio} disabled={bioGen} style={{...PB,background:BL,marginBottom:'1.5rem'}}>{bioGen?'Generating...':'✨ Generate Bio'}</button>
                 <label style={L}>Bio Text</label>
                 <textarea value={bio} onChange={e=>setBio(e.target.value)} rows={8} placeholder="Your bio will appear here..." style={{...I,resize:'vertical',marginBottom:'1rem'}}/>
-                <button onClick={saveProf} style={PB}>{profSaved?'✓ Saved!':'Save Bio'}</button>
+                <button onClick={()=>saveProf()} style={PB}>{profSaved?'✓ Saved!':'Save Bio'}</button>
               </Card>
             </div>
           )}
